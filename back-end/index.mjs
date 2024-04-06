@@ -4,6 +4,7 @@ import connectDb from "./configs/dbConnection.mjs";
 import subjectRouter from "./routes/SubjectRouter.mjs";
 dotenv.config();
 const app =express();
+app.use(express.json());
 app.use('/api/subjects', subjectRouter);
 
 connectDb();

@@ -26,6 +26,7 @@ export const getSubjectById = asyncHandler(async (req, res) => {
 // @route   POST /api/subjects
 // @access  Public
 export const createSubject = asyncHandler(async (req, res) => {
+ console.log(req.body);
   const subject = await Subject.create(req.body);
   res.status(201).json({ success: true, data: subject });
 });
