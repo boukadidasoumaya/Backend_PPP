@@ -1,5 +1,5 @@
 import express from 'express';
-import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject } from '../controllers/subjectController.js';
+import { getSubjects, getSubjectById, createSubject, updateSubject, deleteSubject } from '../controllers/subjectController.mjs';
 
 const router = express.Router();
 
