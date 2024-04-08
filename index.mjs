@@ -18,10 +18,5 @@ app.use('/teachers', TeacherRouter);
 
 
 connectDb();
-
-// app.listen(process.env.PORT , ()=>{
-//     console.log("Server is running")
-// })
-app.listen(5000, () => {
-    console.log('Server started!');
-});
+app.listen(process.env.PORT , ()=>{
+   console.log("Server is running")});
