@@ -31,11 +31,13 @@ export const register=expressAsyncHandler(async (req, res) => {
   
       // Check if the username or email already exists in the database
       const existingAdmin = await Admin.findOne({ $or: [{ username }, { mail }, { num }] });
+      console.log(existingAdmin);
       if (existingAdmin) {
         return res.status(400).json({ error: 'Username, email, or num already exists' });
       }
         // Create a new user
         const admin =await Admin.create(req.body);
+        console.log(admin);
 
       // Create JWT token for the newly registered user
       const token = jwt.sign({ userId: admin._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
