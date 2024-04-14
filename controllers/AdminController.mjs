@@ -8,7 +8,10 @@ export const login = expressAsyncHandler(async (req, res) => {
   try {
     // Find the user by username
     const admin = await Admin.findOne({ username });
+    console.log({username,password});
+    console.log(admin);
     if (!admin) {
+
       return res.status(401).json({ error: 'Invalid username or password' });
     }
     // Verify password
