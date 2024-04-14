@@ -1,12 +1,18 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+// add birthday as atribute
+
+
+function generateStudentId() {
+  return Math.floor(2100000 + Math.random() * 2100000);
+}
 
 // Define schema
 const StudentSchema = new mongoose.Schema({
   Student_id: {
-    type: String,
-    required: [true, 'Student ID is required'],
-    unique: true
+    type: Number,
+    unique: true,
+    default: generateStudentId // Set the default value to the generated student ID
   },
   CIN: {
     type: String,
@@ -29,10 +35,14 @@ const StudentSchema = new mongoose.Schema({
     required: [true, 'Email is required'],
     match: [/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email format']
   },
-  Class_id: {
+  Birthday: {
+    type: Date,
+    required: [true, 'Birthday is required']
+  },
+  class_id: {
     type: mongoose.Schema.Types.ObjectId,
     required: [true, 'Class ID is required']
-  },
+  }
 //   image_url: {
 //     type: String,
 //     match: [/^(http|https):\/\/[^ "]+$/, 'Invalid image URL format']
