@@ -2,7 +2,28 @@ import jwt from 'jsonwebtoken'; // Importing the jsonwebtoken package
 import bcrypt from 'bcrypt'; // Importing the bcrypt package
 import Admin   from '../models/AdminModel.mjs'; // Importing the Admin model
 import expressAsyncHandler from 'express-async-handler';
+import Token from '../models/TokenModel.mjs';
+import sendEmail from './EmailSender.mjs';
 // Function to handle user login
+export const resetverif = async (userId, token, password) => {
+  let passwordResetToken = await Token.findOne({ userId });
+  if (!passwordResetToken) {
+    throw new Error("Invalid or expired password reset token");
+  }
+  const isValid = await bcrypt.compare(token, passwordResetToken.token);
+  if (!isValid) {
+    throw new Error("Invalid or expired password reset token");
+  }
+  const admin = await Admin.findOne({ _id: userId })
+
+  if (password) admin.password = password;
+
+  // Save the updated admin
+  await admin.save();
+
+  await passwordResetToken.deleteOne();
+  return true;
+};
 export const login = expressAsyncHandler(async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -75,7 +96,44 @@ export const register=expressAsyncHandler(async (req, res) => {
       res.status(500).json({ error: 'Internal server error' });
     }
   });
+export const resetPassword =expressAsyncHandler( async (req, res) => {
+  const { cin } = req.body;
+  const admin = await Admin.findOne({ cin });
+console.log(admin);
+const generateRandomToken = () => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16)).join('');
+};
 
+
+  if (!admin) {
+      throw new Error("admin does not exist");
+  }
+  const token = await Token.findOne({ userId: admin._id });
+  if (token) { 
+        await Token.deleteOne()
+  };
+  const existingToken = await Token.findOne({ userId: admin._id });
+  if (existingToken) {
+      await existingToken.deleteOne();
+  }
+
+  // Generate a new reset token
+  const resetToken = generateRandomToken();
+    const hash = await bcrypt.hash(resetToken,10);
+
+  const token2 =await Token.create({
+    userId: admin._id,
+    token: hash,
+    createdAt: Date.now(),
+  })
+console.log(admin.mail);
+
+  const link = `http://localhost:3000/forgot/passwordReset/verif?token=${resetToken}&id=${admin._id}`;
+  sendEmail(admin.mail,"Password Reset Request",{name: admin.name,link: link,});
+  return link;
+});
 export const updateAdmin =expressAsyncHandler( async (req, res) => {
   try {
     const adminId = req.params.id;
