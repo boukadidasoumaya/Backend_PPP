@@ -5,25 +5,43 @@ import expressAsyncHandler from 'express-async-handler';
 import Token from '../models/TokenModel.mjs';
 import sendEmail from './EmailSender.mjs';
 // Function to handle user login
-export const resetverif = async (userId, token, password) => {
-  let passwordResetToken = await Token.findOne({ userId });
-  if (!passwordResetToken) {
-    throw new Error("Invalid or expired password reset token");
+export const resetverif = expressAsyncHandler(async (req, res) => {
+  const {  password , confirmpassword,userId,token } = req.body;
+console.log(userId);
+  try {
+      // Find the password reset token
+      let passwordResetToken = await Token.findOne({ userId });
+
+      // If token does not exist or is expired
+      if (!passwordResetToken) {
+          return res.status(400).json({ message: "Invalid or expired password reset token" });
+      }
+
+      // Compare the provided token with the stored token
+      const isValid = await bcrypt.compare(token, passwordResetToken.token);
+      if (!isValid) {
+          return res.status(400).json({ message: "Invalid or expired password reset token" });
+      }
+
+      // Find the admin by userId
+      const admin = await Admin.findOne({ _id: userId });
+
+      // If password is provided, update admin's password
+      if (password) {
+          admin.password = password;
+      }
+
+      // Save the updated admin
+      await admin.save();
+      // Delete the password reset token
+      await passwordResetToken.deleteOne();
+
+      return res.status(200).json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+      console.error('Error resetting password:', error);
+      return res.status(500).json({ error: 'Internal server error' });
   }
-  const isValid = await bcrypt.compare(token, passwordResetToken.token);
-  if (!isValid) {
-    throw new Error("Invalid or expired password reset token");
-  }
-  const admin = await Admin.findOne({ _id: userId })
-
-  if (password) admin.password = password;
-
-  // Save the updated admin
-  await admin.save();
-
-  await passwordResetToken.deleteOne();
-  return true;
-};
+});
 export const login = expressAsyncHandler(async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -97,6 +115,8 @@ export const register=expressAsyncHandler(async (req, res) => {
     }
   });
 export const resetPassword =expressAsyncHandler( async (req, res) => {
+  
+  try {
   const { cin } = req.body;
   const admin = await Admin.findOne({ cin });
 console.log(admin);
@@ -132,7 +152,21 @@ console.log(admin.mail);
 
   const link = `http://localhost:3000/forgot/passwordReset/verif?token=${resetToken}&id=${admin._id}`;
   sendEmail(admin.mail,"Password Reset Request",{name: admin.name,link: link,});
-  return link;
+  res.status(200).json({
+    success: true,
+    message: "Password reset token generated and email sent successfully",
+    resetToken,
+    admin: {
+      _id: admin._id,
+      name: admin.name,
+      mail: admin.mail,
+      // Add other admin properties as needed
+    },
+  });
+} catch (error) {
+  console.error("Error resetting password:", error);
+  res.status(500).json({ error: "Internal server error" });
+}
 });
 export const updateAdmin =expressAsyncHandler( async (req, res) => {
   try {
