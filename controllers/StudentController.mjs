@@ -99,7 +99,6 @@ export const getStudentById = asyncHandler(async (req, res) => {
 export const getStudentsByMajor = asyncHandler(async (req, res) => {
   try {
     const { major } = req.params;
-    console.log("hello");
 
     const students = await Student.aggregate([
       {
@@ -240,38 +239,38 @@ export const getStudentsByMajorAndByYear = asyncHandler(async (req, res) => {
 // @access  Public
 // Fonction pour vérifier si le CIN existe déjà dans la base de données
 
-export const isCinExists = asyncHandler(async (req, res) => {
-  try {
-    const { cin } = req.params;
-    const existingStudent = await Student.findOne({ CIN: cin });
-    const isExists = !!existingStudent;
-    res.json({ exists: isExists });
-    return isExists;
-  } catch (error) {
-    console.error('Error checking CIN existence:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+const isCinExists = async (cin) => {
+  const existingStudent = await Student.findOne({ CIN: cin });
+  return !!existingStudent; // Renvoie true si le CIN existe déjà, sinon false
+};
 
 // Fonction pour vérifier si l'email existe déjà dans la base de données
-export const isEmailExists = asyncHandler(async (req, res) => {
-  try {
-    const { email } = req.params;
-    const existingStudent = await Student.findOne({ Email: email });
-    const isExists = !!existingStudent; // Renvoie true si l'email existe déjà, sinon false
-    res.json({ exists: isExists });
-    return isExists;
-  } catch (error) {
-    console.error('Error checking email existence:', error);
-    res.status(500).json({ error: 'Internal server error' });
-    
-  }
-});
+const isEmailExists = async (email) => {
+  const existingStudent = await Student.findOne({ Email: email });
+  return !!existingStudent; // Renvoie true si l'email existe déjà, sinon false
+};
 
 export const createStudent = asyncHandler(async (req, res) => {
     const { Major, Year, Group, CIN, Email, ...studentData } = req.body;
 
   try {
+    const isCinDuplicate = await isCinExists(CIN);
+    const isEmailDuplicate = await isEmailExists(Email);
+
+    if (isCinDuplicate && isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: { cin:"CIN already exists" , email:"Email Already exists" } });
+    }
+    // Vérifie si le CIN existe déjà
+    if (isCinDuplicate) {
+      return res.status(400).json({ success: false, errors: {cin:"CIN already exists"} });
+    }
+
+    // Vérifie si l'email existe déjà
+    if (isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: {email:"Email already exists"} });
+    }
+
+   
     // Check if the CIN already exists
     
     
@@ -311,9 +310,42 @@ export const createStudent = asyncHandler(async (req, res) => {
 // @access  Public
 export const updateStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { Major, Year, Group, ...updatedStudentData } = req.body;
+  const { Major, Year, Group ,...updatedStudentData } = req.body;
+  const {CIN, Email} = updatedStudentData;
+
 
   try {
+    const existingStudent = await Student.findById(id);
+    const currentCIN = existingStudent.CIN;
+    const currentEmail = existingStudent.Email;
+
+    const isCinDuplicate = await isCinExists(CIN);
+    const isEmailDuplicate = await isEmailExists(Email);
+
+    if ((currentCIN !==CIN && currentEmail !==Email)) {
+      
+      if (isCinDuplicate && isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: { cin:"CIN already exists" , email:"Email Already exists" } });
+    }
+    // Vérifie si le CIN existe déjà
+    if (isCinDuplicate) {
+      return res.status(400).json({ success: false, errors: {cin:"CIN already exists"} });
+    }
+
+    // Vérifie si l'email existe déjà
+    if (isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: {email:"Email already exists"} });
+    }}
+    else if (currentCIN !==CIN) {
+      if (isCinDuplicate) {
+      return res.status(400).json({ success: false, errors: {cin:"CIN already exists"} });
+    }
+    }
+    else if (currentEmail !==Email) {
+      if (isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: {email:"Email already exists"} });
+    }
+    }
     // Check if the student exists
     const student = await Student.findById(id);
     if (!student) {

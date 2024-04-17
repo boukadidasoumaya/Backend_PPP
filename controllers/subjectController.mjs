@@ -35,6 +35,7 @@ export const createSubject = asyncHandler(async (req, res) => {
 // @route   PUT /api/subjects/:id
 // @access  Public
 export const updateSubject = asyncHandler(async (req, res) => {
+  
   const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
