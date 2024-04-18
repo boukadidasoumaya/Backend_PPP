@@ -740,20 +740,37 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
 );
 
 export const createSubject = asyncHandler(async (req, res) => {
-  const subject = await Subject.create(req.body);
-  res.status(201).json({ success: true, data: subject });
+  const existingSubject = await Subject.findOne({
+    SubjectName: req.body.SubjectName,
+    Coeff: req.body.Coeff,
+  });
+  if (!existingSubject) {
+    const subject = await Subject.create(req.body);
+    res.status(201).json({ success: true, data: subject });
+  } else {
+    res.status(400).json({ success: false, message: "Subject already exists" });
+  }
 });
 
 export const updateSubject = asyncHandler(async (req, res) => {
-  const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
+  const existingSubject = await Subject.findOne({
+    SubjectName: req.body.SubjectName,
+    Coeff: req.body.Coeff,
   });
-  if (!subject) {
-    res.status(404);
-    throw new Error("Subject not found");
+  if (!existingSubject) {
+    const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!subject) {
+      res.status(404);
+      throw new Error("Subject not found");
+    }
+    res.status(200).json({ success: true, data: subject });
+  } else {
+    res.status(400).json({ success: false, message: "Subject already exists" });
   }
-  res.status(200).json({ success: true, data: subject });
 });
 
 export const deleteSubject = asyncHandler(async (req, res) => {
