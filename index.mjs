@@ -29,7 +29,5 @@ app.use("/teachers", TeacherRouter);
 app.use("/timetables", TimeTableRouter);
 
 connectDb();
-
-app.listen(5000, () => {
-  console.log("Server started!");
-});
+app.listen(process.env.PORT , ()=>{
+   console.log("Server is running")});
