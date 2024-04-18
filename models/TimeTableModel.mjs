@@ -5,7 +5,6 @@ const TimeTableSchema = mongoose.Schema({
     type: String,
     required: [true, "Start Time is required"],
     enum: [
-      [
         "08:00",
         "09:30",
         "09:45",
@@ -16,15 +15,12 @@ const TimeTableSchema = mongoose.Schema({
         "15:30",
         "15:45",
         "17:15",
-      ],
-      "Invalid Start Time format",
     ],
   },
   EndTime: {
     type: String,
     required: [true, "End Time is required"],
     enum: [
-      [
         "08:00",
         "09:30",
         "09:45",
@@ -36,8 +32,6 @@ const TimeTableSchema = mongoose.Schema({
         "15:45",
         "17:15",
       ],
-      "Invalid Start Time format",
-    ],
   },
   Day: {
     type: String,

@@ -337,7 +337,7 @@ const updateTimeTable = asyncHandler(async (req, res) => {
     teacher_cin,
     ...updatedtimeData
   } = req.body;
-  
+
   const existingStartTimeClass = await TimeTable.findOne({
     StartTime: timeData.StartTime,
     Day: timeData.Day,
