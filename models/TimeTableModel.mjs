@@ -4,12 +4,40 @@ const TimeTableSchema = mongoose.Schema({
   StartTime: {
     type: String,
     required: [true, "Start Time is required"],
-    match: [/^(?:[0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid Start Time format"],
+    enum: [
+      [
+        "08:00",
+        "09:30",
+        "09:45",
+        "11:15",
+        "11:30",
+        "13:00",
+        "14:00",
+        "15:30",
+        "15:45",
+        "17:15",
+      ],
+      "Invalid Start Time format",
+    ],
   },
   EndTime: {
     type: String,
     required: [true, "End Time is required"],
-    match: [/^(?:[0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid End Time format"],
+    enum: [
+      [
+        "08:00",
+        "09:30",
+        "09:45",
+        "11:15",
+        "11:30",
+        "13:00",
+        "14:00",
+        "15:30",
+        "15:45",
+        "17:15",
+      ],
+      "Invalid Start Time format",
+    ],
   },
   Day: {
     type: String,
