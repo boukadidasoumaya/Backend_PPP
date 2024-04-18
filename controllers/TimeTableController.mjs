@@ -10,60 +10,64 @@ import asyncHandler from "express-async-handler";
 // Controller function to create a new time table entry
 const getTimeTables = async (req, res) => {
   try {
-    const timeTables = await TimeTable.find();
-    // const timeTables = await TimeTable.aggregate([
-    // {
-    //   $lookup: {
-    //     from: "Class",
-    //     localField: "class_id",
-    //     foreignField: "_id",
-    //     as: "class",
-    //   },
-    // },
-    // // {
-    // //   $lookup: {
-    // //     from: "Subject",
-    // //     localField: "subject_id",
-    // //     foreignField: "_id",
-    // //     as: "subject",
-    // //   },
-    // // },
-    // // {
-    // //   $lookup: {
-    // //     from: "Teacher",
-    // //     localField: "teacher_id",
-    // //     foreignField: "_id",
-    // //     as: "teacher",
-    // //   },
-    // // },
-    // {
-    //   $unwind: "$class",
-    // },
-    // // {
-    // //   $unwind: "$subject",
-    // // },
-    // // {
-    // //   $unwind: "$teacher",
-    // // },
-    // {
-    //   $project: {
-    //     _id: 1,
-    //     StartTime: 1,
-    //     EndTime: 1,
-    //     Day: 1,
-    //     // subject: "$subject.SubjectName",
-    //     // module: "$subject.Module",
-    //     // coeff: "$subject.Coeff",
-    //     Major: "$class.Major",
-    //     Year: "$class.Year",
-    //     // teacher_name: "$teacher.FirstName" + " " + "$teacher.LastName",
-    //     // teacher_cin: "$teacher.cin",
-    //     // teacher_email: "$teacher.Email",
-    //     Room: 1,
-    //     Week: 1,
-    //   },
-    // },
-    // ]);
+    const timeTables = await TimeTable.aggregate([
+      {
+        $lookup: {
+          from: "Class",
+          localField: "class_id",
+          foreignField: "_id",
+          as: "class",
+        },
+      },
+      {
+        $lookup: {
+          from: "Subject",
+          localField: "subject_id",
+          foreignField: "_id",
+          as: "subject",
+        },
+      },
+      {
+        $lookup: {
+          from: "Teacher",
+          localField: "teacher_id",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      {
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$subject",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $project: {
+          _id: 1,
+          Day: 1,
+          Room: 1,
+          StartTime: 1,
+          EndTime: 1,
+          SubjectName: "$subject.SubjectName",
+          module: "$subject.Module",
+          coeff: "$subject.Coeff",
+          major: "$class.Major",
+          year: "$class.Year",
+          group: "$class.Group",
+          // teacher_firstname: "$teacher.FirstName",
+          // teacher_lastname: "$teacher.LastName",
+          teacher_name: {
+            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+          },
+          teacher_cin: "$teacher.CIN",
+          teacher_email: "$teacher.Email",
+          Week: 1,
+        },
+      },
+    ]);
     res.status(200).json({ success: true, data: timeTables });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -117,22 +121,25 @@ const getTimeTableById = asyncHandler(async (req, res) => {
       {
         $project: {
           _id: 1,
+          Day: 1,
+          Room: 1,
           StartTime: 1,
           EndTime: 1,
-          Day: 1,
-          Subject: "$subject.SubjectName",
-          Module: "$subject.Module",
-          Coeff: "$subject.Coeff",
-          Major: "$class.Major",
-          Year: "$class.Year",
-          teacher_name: "$teacher.FirstName" + " " + "$teacher.LastName",
-          teacher_cin: "$teacher.cin",
+          SubjectName: "$subject.SubjectName",
+          module: "$subject.Module",
+          coeff: "$subject.Coeff",
+          major: "$class.Major",
+          year: "$class.Year",
+          group: "$class.Group",
+          teacher_name: {
+            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+          },
+          teacher_cin: "$teacher.CIN",
           teacher_email: "$teacher.Email",
-          Room: 1,
-          Week: 1,
         },
       },
     ]);
+
     if (!timeTable.length) {
       return res
         .status(404)
@@ -147,27 +154,137 @@ const getTimeTableById = asyncHandler(async (req, res) => {
 });
 
 const createTimeTable = asyncHandler(async (req, res) => {
-  const { subject, module, coeff, major, year, teacher_cin, ...timeData } =
-    req.body;
+  const {
+    subject,
+    module,
+    coeff,
+    major,
+    year,
+    group,
+    teacher_cin,
+    ...timeData
+  } = req.body;
+
+  const existingStartTimeClass = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    class_id: await Class.findOne({
+      Major: major,
+      Year: year,
+      Group: group,
+    }),
+  });
+  const existingEndTimeClass = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    class_id: await Class.findOne({
+      Major: major,
+      Year: year,
+      Group: group,
+    }),
+  });
+
+  const existingStartTimeRoom = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Room: timeData.Room,
+  });
+  const existingEndTimeRoom = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Room: timeData.Room,
+  });
+
+  const existingStartTimeWeek = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Week: timeData.Week,
+  });
+  const existingEndTimeWeek = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Week: timeData.Week,
+  });
+  const existingStartTimeWeekW = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Week: "W",
+  });
+  const existingEndTimeWeekW = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Week: "W",
+  });
+
+  const existingStartTimeTeacher = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    teacher_id: await Teacher.findOne({ CIN: teacher_cin }),
+  });
+  const existingEndTimeTeacher = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    teacher_id: await Teacher.findOne({ CIN: teacher_cin }),
+  });
+
+  let error = "";
+  let existError = false;
+
+  if (existingStartTimeClass || existingEndTimeClass) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this class\n"],
+    };
+  }
+  if (existingStartTimeRoom || existingEndTimeRoom) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this room\n"],
+    };
+  }
+  if (
+    existingStartTimeWeek ||
+    existingEndTimeWeek ||
+    existingStartTimeWeekW ||
+    existingEndTimeWeekW
+  ) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this week\n"],
+    };
+  }
+  if (existingStartTimeTeacher || existingEndTimeTeacher) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists for this teacher\n"],
+    };
+  }
+
+  if (existError) return res.status(400).json({ success: false, error: error });
 
   try {
     let classObject;
+    let subjectObject;
+    let teacherObject;
 
     // Check if the class already exists
-    const existingClass = await Class.findOne({ Major: major, Year: year });
-    const existingSubject = await Subject.findOne({
-      Subject: subject,
-      Module: module,
-      Coeff: coeff,
+    const existingClass = await Class.findOne({
+      Major: major,
+      Year: year,
+      Group: group,
     });
-    const existingTeacher = await Teacher.findOne({ teacher_cin: teacher_cin });
-
     if (existingClass) {
       classObject = existingClass;
     } else {
       classObject = await Class.create({ Major: major, Year: year });
     }
 
+    // Check if the subject already exists
+    const existingSubject = await Subject.findOne({
+      SubjectName: subject,
+      Module: module,
+      Coeff: coeff,
+    });
     if (existingSubject) {
       subjectObject = existingSubject;
     } else {
@@ -178,13 +295,15 @@ const createTimeTable = asyncHandler(async (req, res) => {
       });
     }
 
+    // Check if the teacher already exists
+    const existingTeacher = await Teacher.findOne({ CIN: teacher_cin });
     if (existingTeacher) {
       teacherObject = existingTeacher;
     } else {
-      teacherObject = await Teacher.create({ cin: teacher_cin });
+      teacherObject = await Teacher.create({ CIN: teacher_cin });
     }
 
-    // Create the time document and associate it with the class
+    // Create the time document and associate it with the class, subject, and teacher
     const time = await TimeTable.create({
       ...timeData,
       class_id: classObject._id,
@@ -208,7 +327,113 @@ const createTimeTable = asyncHandler(async (req, res) => {
 
 const updateTimeTable = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { Major, Year, Group, ...updatedtimeData } = req.body;
+  const {
+    subject,
+    module,
+    coeff,
+    major,
+    year,
+    group,
+    teacher_cin,
+    ...updatedtimeData
+  } = req.body;
+  
+  const existingStartTimeClass = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    class_id: await Class.findOne({
+      Major: major,
+      Year: year,
+      Group: group,
+    }),
+  });
+  const existingEndTimeClass = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    class_id: await Class.findOne({
+      Major: major,
+      Year: year,
+      Group: group,
+    }),
+  });
+
+  const existingStartTimeRoom = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Room: timeData.Room,
+  });
+  const existingEndTimeRoom = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Room: timeData.Room,
+  });
+
+  const existingStartTimeWeek = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Week: timeData.Week,
+  });
+  const existingEndTimeWeek = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Week: timeData.Week,
+  });
+  const existingStartTimeWeekW = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    Week: "W",
+  });
+  const existingEndTimeWeekW = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    Week: "W",
+  });
+
+  const existingStartTimeTeacher = await TimeTable.findOne({
+    StartTime: timeData.StartTime,
+    Day: timeData.Day,
+    teacher_id: await Teacher.findOne({ CIN: teacher_cin }),
+  });
+  const existingEndTimeTeacher = await TimeTable.findOne({
+    EndTime: timeData.EndTime,
+    Day: timeData.Day,
+    teacher_id: await Teacher.findOne({ CIN: teacher_cin }),
+  });
+
+  let error = "";
+  let existError = false;
+
+  if (existingStartTimeClass || existingEndTimeClass) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this class\n"],
+    };
+  }
+  if (existingStartTimeRoom || existingEndTimeRoom) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this room\n"],
+    };
+  }
+  if (
+    existingStartTimeWeek ||
+    existingEndTimeWeek ||
+    existingStartTimeWeekW ||
+    existingEndTimeWeekW
+  ) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists in this week\n"],
+    };
+  }
+  if (existingStartTimeTeacher || existingEndTimeTeacher) {
+    existError = true;
+    error = {
+      $concat: [error, "Time already exists for this teacher\n"],
+    };
+  }
+
+  if (existError) return res.status(400).json({ success: false, error: error });
 
   try {
     // Check if the time exists
@@ -221,17 +446,40 @@ const updateTimeTable = asyncHandler(async (req, res) => {
     Object.assign(time, updatedtimeData);
 
     // Update class_id if Major, Year, or Group has changed
-    if (Major !== time.Major || Year !== time.Year || Group !== time.Group) {
+    if (major !== time.Major || year !== time.Year || group !== time.Group) {
       // Check if the class already exists
-      let classObject = await Class.findOne({ Major, Year, Group });
+      let classObject = await Class.findOne({ major, year, group });
 
       if (!classObject) {
         // If the class doesn't exist, create it
-        classObject = await Class.create({ Major, Year, Group });
+        classObject = await Class.create({ major, year, group });
       }
-
-      // Update the time's class_id
       time.class_id = classObject._id;
+    }
+
+    if (teacher_cin !== time.teacher_cin) {
+      // Check if the teacher already exists
+      let teacherObject = await Teacher.findOne({ CIN: teacher_cin });
+
+      if (!teacherObject) {
+        // If the teacher doesn't exist, create it
+        teacherObject = await Teacher.create({ CIN: teacher_cin });
+      }
+      time.teacher_id = teacherObject._id;
+    }
+
+    if (
+      subject !== time.SubjectName ||
+      module !== time.Module ||
+      coeff !== time.Coeff
+    ) {
+      let subjectObject = await Subject.findOne({ subject, module, coeff });
+
+      if (!subjectObject) {
+        // If the subject doesn't exist, create it
+        subjectObject = await Subject.create({ subject, module, coeff });
+      }
+      time.subject_id = subjectObject._id;
     }
 
     await time.save();

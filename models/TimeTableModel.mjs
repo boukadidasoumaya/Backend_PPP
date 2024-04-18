@@ -2,12 +2,12 @@ import mongoose from "mongoose";
 
 const TimeTableSchema = mongoose.Schema({
   StartTime: {
-    type: Date,
+    type: String,
     required: [true, "Start Time is required"],
     match: [/^(?:[0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid Start Time format"],
   },
   EndTime: {
-    type: Date,
+    type: String,
     required: [true, "End Time is required"],
     match: [/^(?:[0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid End Time format"],
   },
@@ -34,7 +34,8 @@ const TimeTableSchema = mongoose.Schema({
   },
   Week: {
     type: String,
-    enum: ["A", "B"],
+    required: [true, "Week is required"],
+    enum: ["A", "B", "W"],
   },
 });
 
