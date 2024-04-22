@@ -9,6 +9,20 @@ export const getClasses = asyncHandler(async (req, res) => {
   const classes = await Class.find();
   res.status(200).json({ success: true, data: classes });
 });
+// Méthode pour obtenir toutes les majors distinctes triées par ordre alphabétique
+export const getAllMajors = asyncHandler(async (req, res) => {
+  const distinctMajors = await Class.distinct('Major');
+  const sortedMajors = distinctMajors.sort();
+  res.status(200).json({ majors: sortedMajors });
+});
+
+
+// Méthode pour obtenir tous les niveaux distincts
+export const getAllLevels = asyncHandler(async (req, res) => {
+  const distinctLevels = await Class.distinct('Year');
+  res.status(200).json({ levels: distinctLevels });
+});
+
 
 // @desc    Get single class
 // @route   GET /classes/:id

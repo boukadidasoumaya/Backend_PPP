@@ -10,7 +10,7 @@ const SubjectSchema = mongoose.Schema({
         required: [true, "Please add module"]
     },
     Coeff: {
-        type: String,
+        type: Number,
         required: [true, "Please add coefficient"]
     }
 });
