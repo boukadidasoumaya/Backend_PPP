@@ -7,8 +7,7 @@ import AdminRouter from "./routes/AdminRouter.mjs";
 import StudentRouter from "./routes/StudentRouter.mjs";
 import ClassRouter from "./routes/ClassRouter.mjs";
 import TeacherRouter from "./routes/TeacherRouter.mjs";
-import multer from "multer";
-const upload = multer({ dest: 'uploads/' });
+
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -24,10 +23,7 @@ app.use('/api/admin', AdminRouter);
 app.use('/students', StudentRouter);
 app.use('/classes', ClassRouter);
 app.use('/teachers', TeacherRouter);
-app.post('/upload', upload.single('csv'), (req, res) => {
-    console.log(req.file);
-    res.status(200).json({ success: true, message: 'File uploaded successfully' });
-});
+
 connectDb();
 
 app.listen(process.env.PORT, () => {

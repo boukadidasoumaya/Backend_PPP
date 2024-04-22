@@ -52,7 +52,7 @@ const studentSchema = joi.object({
     Email: joi.string().email().required(),
     CIN: joi.string().length(8).pattern(/^[0-9]+$/).required(), // Ensure CIN is 8 digits
     Birthday: joi.date().required(),
-    Major: joi.string().valid('MPI', 'RT', 'GL', 'IIA', 'IMI', 'BIO', 'CBA', 'CHIMIE', 'MASTER', 'DOCTORAT').required(), // Ensure Major is one of the specified values
+    Major: joi.string().valid('MPI', 'RT', 'GL', 'IIA', 'IMI', 'BIO', 'CBA', 'CH', 'MASTER', 'DOCTORAT').required(), // Ensure Major is one of the specified values
     Year: joi.number().integer().min(1).max(5).required(), // Ensure Year is between 1 and 5
     Group: joi.number().integer().min(1).max(4).required(), // Ensure Group is between 1 and 4
   });
@@ -105,7 +105,6 @@ const validateCINUnique = async (value, helpers) => {
   export const createStudentsByCSV = async (req, res) => {
     uploadedCSV(req, res, async (err) => {
       try {
-        
         let ok = true;
         // Parsing CSV using papaparse
         const CSVFileUP = req.file.path;
@@ -124,43 +123,34 @@ const validateCINUnique = async (value, helpers) => {
           try {
             // Validate student data using Joi
             const { error } = await studentValidationSchema.validateAsync(studentData);
-  
+            console.log("eror",error);
             if (error) {
-              validationErrors.push(error);
-              console.log(error);
+              const errorMessage = error.details.map((detail) => detail.message).join(', ');
+              validationErrors.push(errorMessage);
               continue; // Skip to next student if validation fails
             }
   
-            const { Major, Year, Group, CIN, Email, ...rest } = studentData;
-  
             // Check for unique Email and CIN in the database before creating the student
-            const existingEmail = await Student.findOne({ Email });
-            const existingCIN = await Student.findOne({ CIN });
-            let formatCIN=true;
-            if (!/^\d{8}$/.test(CIN)) {
-                formatCIN = false;
+            const existingEmail = await Student.findOne({ Email: studentData.Email });
+            const existingCIN = await Student.findOne({ CIN: studentData.CIN });
+            let formatCIN = true;
+            if (!/^\d{8}$/.test(studentData.CIN)) {
+              formatCIN = false;
             }
-    
+  
             if (existingEmail || existingCIN || !formatCIN) {
               // Handle non-unique Email or CIN
-              console.error('Email or CIN must be unique');
-           ok = false;
-           break;
+              ok = false;
+              break;
             }
           } catch (error) {
             console.error('Error validating student data:', error);
-            return res.status(500).json({ success: false, error: 'Error validating student data' });
+           
+            return res.status(500).json({ success: false, error: error.message});
           }
         }
   
-        if (validationErrors.length > 0) {
-          // Handle validation errors
-          return res.status(400).json({
-            success: false,
-            error: 'Validation errors occurred',
-            validationErrors,
-          });
-        }
+       
   
         // If no errors, insert the students into the database
         for (const studentData of parsedData.data) {
@@ -174,30 +164,36 @@ const validateCINUnique = async (value, helpers) => {
               // If the class doesn't exist, create it
               classObject = await Class.create({ Major, Year, Group });
             }
-            if (ok)
-           { 
-            // Create the student document and associate it with the class
-            const student = await Student.create({ ...rest, CIN, Email, class_id: classObject._id });
   
-            // Update the class document to include the new student ID
-            if (!classObject.students) {
-              classObject.students = []; // Initialize students array if not already present
-            }
-            classObject.students.push(student._id);
-            await classObject.save();
+            if (ok) {
+              // Create the student document and associate it with the class
+              const student = await Student.create({ ...rest, CIN, Email, class_id: classObject._id });
+  
+              // Update the class document to include the new student ID
+              if (!classObject.students) {
+                classObject.students = []; // Initialize students array if not already present
+              }
+              classObject.students.push(student._id);
+              await classObject.save();
             }
           } catch (error) {
             console.error('Error inserting student into database:', error);
             return res.status(500).json({ success: false, error: 'Error inserting student into database' });
           }
         }
-        if (ok)
-       { return res.status(201).json({ success: true, message: 'Students created successfully' });}
-       else{return res.status(500).json({ success: false, error: 'Check Your Emails and CIN . They must be unique and valid . Also check Major Year and Group' });}
+        if (ok) {
+          return res.status(201).json({ success: true, message: 'Students created successfully' });
+        } else {
+          return res.status(500).json({
+            success: false,
+            error: 'Error inserting student into database. Check Your Emails and CIN. They must be unique and valid. Also check Major, Year, and Group',
+          });
+        }
       } catch (err) {
         console.error('Error processing CSV file:', err);
         return res.status(500).json({ success: false, error: 'Error processing CSV file' });
       }
     });
   };
+  
   
