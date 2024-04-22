@@ -7,7 +7,7 @@ const ClassSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Major is required'],
     unique: true,
-    enum: ['MPI', 'GL', 'RT', 'IIA', 'IMI', 'Master', 'Doctorat']
+    enum: ['MPI', 'GL', 'RT', 'IIA', 'IMI', 'Master', 'Doctorat', 'CBA', 'BIO', 'CH']
   },
   Year: {
     type: Number,
