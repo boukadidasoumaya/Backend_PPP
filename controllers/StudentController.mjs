@@ -48,6 +48,7 @@ export const getStudentById = asyncHandler(async (req, res) => {
   try {
     const studentId = req.params.id; // Assuming the ID is passed in the request params
     const newId = new ObjectId(studentId); // Create a new ObjectId instance
+    console.log(newId);
     const student = await Student.aggregate([
       {
         $match: {
@@ -260,12 +261,10 @@ export const createStudent = asyncHandler(async (req, res) => {
     const isEmailDuplicate = await isEmailExists(Email);
 
     if (isCinDuplicate && isEmailDuplicate) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          errors: { cin: "CIN already exists", email: "Email Already exists" },
-        });
+      return res.status(400).json({
+        success: false,
+        errors: { cin: "CIN already exists", email: "Email Already exists" },
+      });
     }
     // Vérifie si le CIN existe déjà
     if (isCinDuplicate) {
@@ -344,15 +343,13 @@ export const updateStudent = asyncHandler(async (req, res) => {
 
     if (currentCIN !== CIN && currentEmail !== Email) {
       if (isCinDuplicate && isEmailDuplicate) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            errors: {
-              cin: "CIN already exists",
-              email: "Email Already exists",
-            },
-          });
+        return res.status(400).json({
+          success: false,
+          errors: {
+            cin: "CIN already exists",
+            email: "Email Already exists",
+          },
+        });
       }
       // Vérifie si le CIN existe déjà
       if (isCinDuplicate) {
