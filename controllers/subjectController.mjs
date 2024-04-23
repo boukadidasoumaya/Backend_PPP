@@ -55,6 +55,7 @@ export const getSubjects = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -80,7 +81,7 @@ export const getSubjects = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -232,6 +233,7 @@ export const getSubjectByName = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -257,7 +259,7 @@ export const getSubjectByName = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -326,6 +328,7 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -351,7 +354,7 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -421,6 +424,7 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -446,7 +450,7 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -517,6 +521,7 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -542,7 +547,7 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -612,6 +617,7 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -637,7 +643,7 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -709,6 +715,7 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -734,7 +741,7 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -806,6 +813,7 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
       {
         $group: {
           _id: {
+            _id: "$_id",
             SubjectName: "$SubjectName",
             module: "$Module",
             coeff: "$Coeff",
@@ -831,7 +839,7 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
       },
       {
         $project: {
-          _id: 0,
+          _id: "$_id._id",
           SubjectName: "$_id.SubjectName",
           module: "$_id.module",
           coeff: "$_id.coeff",
@@ -906,6 +914,7 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
         {
           $group: {
             _id: {
+              _id: "$_id",
               SubjectName: "$SubjectName",
               module: "$Module",
               coeff: "$Coeff",
@@ -931,7 +940,7 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
         },
         {
           $project: {
-            _id: 0,
+            _id: "$_id._id",
             SubjectName: "$_id.SubjectName",
             module: "$_id.module",
             coeff: "$_id.coeff",
