@@ -7,25 +7,36 @@ import AdminRouter from "./routes/AdminRouter.mjs";
 import StudentRouter from "./routes/StudentRouter.mjs";
 import ClassRouter from "./routes/ClassRouter.mjs";
 import TeacherRouter from "./routes/TeacherRouter.mjs";
+import TimeTableRouter from "./routes/TimeTableRouter.mjs";
+import DepartmentRouter from "./routes/DepartmentRouter.mjs";
+import subRouter from "./routes/subRouter.mjs";
+
+
+
 
 dotenv.config();
 const app = express();
 app.use(express.json());
 
 // Utiliser le middleware cors pour gérer les en-têtes CORS
-app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 
-app.use('/api/subjects', subjectRouter);
-app.use('/api/admin', AdminRouter);
-app.use('/students', StudentRouter);
-app.use('/classes', ClassRouter);
-app.use('/teachers', TeacherRouter);
+app.use("/api/subjects", subjectRouter);
+app.use("/api/admin", AdminRouter);
+app.use("/students", StudentRouter);
+app.use("/classes", ClassRouter);
+app.use("/teachers", TeacherRouter);
+app.use("/timetables", TimeTableRouter);
+app.use("/departments", DepartmentRouter);
+app.use("/subjects",subRouter);
+
+
 
 connectDb();
-
-app.listen(5000, () => {
-    console.log('Server started!');
-});
+app.listen(process.env.PORT , ()=>{
+   console.log("Server is running")});

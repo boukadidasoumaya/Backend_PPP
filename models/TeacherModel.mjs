@@ -9,6 +9,8 @@
 // add error messages for each field
 import mongoose from 'mongoose';
 
+
+
 // Define schema
 
 const TeacherSchema = new mongoose.Schema({
@@ -37,7 +39,7 @@ const TeacherSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Department is required'],
         unique: true,
-        enum: ['Génie Informatique et Mathématiques', 'Génie Physique et Instrumentation', 'Génie Biologique et Chimie', 'Sciences Sociales', 'Langues et Formation Générale']
+       // enum: ['Génie Informatique et Mathématiques', 'Génie Physique et Instrumentation', 'Génie Biologique et Chimie', 'Sciences Sociales', 'Langues et Formation Générale']
     }
     });
 
