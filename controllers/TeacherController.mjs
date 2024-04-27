@@ -1,7 +1,7 @@
-import Teacher from '../models/TeacherModel.mjs'; // Import Teacher model
-import TimeTable from '../models/TimeTableModel.mjs'; // Import TimeTable model
-import Subject from '../models/SubjectModel.mjs'; // Import Subject model
-import asyncHandler from 'express-async-handler';
+import Teacher from "../models/TeacherModel.mjs"; // Import Teacher model
+import TimeTable from "../models/TimeTableModel.mjs"; // Import TimeTable model
+import Subject from "../models/SubjectModel.mjs"; // Import Subject model
+import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
 const { ObjectId } = mongoose.Types;
 
@@ -20,15 +20,18 @@ export const getTeachers = asyncHandler(async (req, res) => {
         },
       },
       {
-        $unwind: "$timetable" // Unwind the timetable array
+        $unwind: "$timetable",
       },
       {
         $lookup: {
-          from: "Subjects",
+          from: "Subject",
           localField: "timetable.subject_id",
           foreignField: "_id",
           as: "subject",
         },
+      },
+      {
+        $unwind: "$subject",
       },
       {
         $group: {
@@ -38,9 +41,25 @@ export const getTeachers = asyncHandler(async (req, res) => {
           LastName: { $first: "$LastName" },
           Email: { $first: "$Email" },
           Department: { $first: "$Department" },
-          Subjects: { $addToSet: "$subject" } // Collect subjects for each teacher
-        }
-      }
+          Subjects: { $addToSet: "$subject.SubjectName" },
+        },
+      },
+      {
+        $sort: {
+          LastName: 1,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          CIN: 1,
+          FirstName: 1,
+          LastName: 1,
+          Email: 1,
+          Department: 1,
+          Subjects: 1,
+        },
+      },
     ]);
 
     res.status(200).json({ success: true, data: teachers });
@@ -49,7 +68,6 @@ export const getTeachers = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: "Server Error" });
   }
 });
-
 
 // @desc    Get single teacher with timetable
 // @route   GET /teachers/:id
@@ -88,10 +106,10 @@ export const getTeacherById = asyncHandler(async (req, res) => {
             subject_id: 1,
             class_id: 1,
             Room: 1,
-            Week: 1
-          }
-        }
-      }
+            Week: 1,
+          },
+        },
+      },
     ]);
 
     if (!teacher.length) {
@@ -107,22 +125,6 @@ export const getTeacherById = asyncHandler(async (req, res) => {
   }
 });
 
-
-//@desc    Get all subjects
-// @route   GET /subjects
-// @access  Public
-export const getAllSubjects = asyncHandler(async (req, res) => {
-  try {
-    const distinctSubjects = await TimeTable.distinct('subject_id');
-    const subjectNames = await Subject.find({ _id: { $in: distinctSubjects } }, 'SubjectName');
-    const sortedSubjectNames = subjectNames.map(subject => subject.SubjectName).sort();
-    res.status(200).json({ subjects: sortedSubjectNames });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: "Server Error" });
-  }
-});
-
 // @desc    Get teachers by department with their timetable
 // @route   GET /teachers/departments/:department
 // @access  Public
@@ -131,7 +133,7 @@ export const getTeachersByDepartment = asyncHandler(async (req, res) => {
     const { department } = req.params;
     const teachers = await Teacher.aggregate([
       {
-        $match: { Department: department }
+        $match: { Department: department },
       },
       {
         $lookup: {
@@ -156,10 +158,10 @@ export const getTeachersByDepartment = asyncHandler(async (req, res) => {
             subject_id: 1,
             class_id: 1,
             Room: 1,
-            Week: 1
-          }
-        }
-      }
+            Week: 1,
+          },
+        },
+      },
     ]);
 
     res.status(200).json({ success: true, data: teachers });
@@ -171,10 +173,9 @@ export const getTeachersByDepartment = asyncHandler(async (req, res) => {
 
 // Other controller functions (createTeacher, updateTeacher, deleteTeacher) remain unchanged
 
-
 export const getAllDepartments = asyncHandler(async (req, res) => {
   try {
-    const distinctDepartments = await Teacher.distinct('Department');
+    const distinctDepartments = await Teacher.distinct("Department");
     const sortedDepartments = distinctDepartments.sort();
     res.status(200).json({ departments: sortedDepartments });
   } catch (error) {
@@ -185,7 +186,7 @@ export const getAllDepartments = asyncHandler(async (req, res) => {
 
 export const getTeachersBySubject = asyncHandler(async (req, res) => {
   try {
-    const { subject } = req.params;
+    const subject = req.params.subject;
     const teachers = await Teacher.aggregate([
       {
         $lookup: {
@@ -196,21 +197,23 @@ export const getTeachersBySubject = asyncHandler(async (req, res) => {
         },
       },
       {
-        $unwind: "$timetable" // unwind the timetable array
+        $unwind: "$timetable",
       },
       {
         $lookup: {
           from: "Subject",
-          localField: "timetable.subject_id", // use the subject_id from the timetable
+          localField: "timetable.subject_id",
           foreignField: "_id",
           as: "subject",
         },
       },
       {
-        $unwind: "$subject" // unwind the subject array
+        $unwind: "$subject",
       },
       {
-        $match: { "SubjectName": subject } // filter by the specified subject name
+        $match: {
+          "subject.SubjectName": subject
+        }
       },
       {
         $group: {
@@ -220,22 +223,28 @@ export const getTeachersBySubject = asyncHandler(async (req, res) => {
           LastName: { $first: "$LastName" },
           Email: { $first: "$Email" },
           Department: { $first: "$Department" },
-          Subjects: { $push: "$SubjectName" } // push the subject names into an array
-        }
-      }
+          Subjects: { $addToSet: "$subject.SubjectName" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          CIN: 1,
+          FirstName: 1,
+          LastName: 1,
+          Email: 1,
+          Department: 1,
+          Subjects: 1,
+        },
+      },
     ]);
-    
+
     res.status(200).json({ success: true, data: teachers });
-    
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, error: "Server Error" });
   }
 });
-
-
-
-
 
 // @desc    Get teachers by department
 // @route   GET /teachers/departments/:department
@@ -264,7 +273,6 @@ export const getTeachersByDepartmentAndYear = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: "Server Error" });
   }
 });
-
 
 // @desc    Create new teacher
 // @route   POST /teachers
@@ -295,10 +303,15 @@ export const updateTeacher = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   try {
-    const teacher = await Teacher.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const teacher = await Teacher.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!teacher) {
-      return res.status(404).json({ success: false, error: "Teacher not found" });
+      return res
+        .status(404)
+        .json({ success: false, error: "Teacher not found" });
     }
 
     res.status(200).json({ success: true, data: teacher });
@@ -316,7 +329,7 @@ export const deleteTeacher = asyncHandler(async (req, res) => {
     const teacher = await Teacher.findByIdAndDelete(req.params.id);
     if (!teacher) {
       res.status(404);
-      throw new Error('Teacher not found');
+      throw new Error("Teacher not found");
     }
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

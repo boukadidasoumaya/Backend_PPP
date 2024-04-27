@@ -10,14 +10,16 @@ import {
   getSubjectsByTeacherAndMajor,
   getSubjectsByTeacherAndYear,
   getSubjectsByTeacherMajorAndYear,
+  getAllSubjects,
   createSubject,
   updateSubject,
   deleteSubject,
 } from "../controllers/SubjectController.mjs";
+
 const router = express.Router();
 
-
 router.route("/").get(getSubjects).post(createSubject);
+router.route("/subjects").get(getAllSubjects);
 router
   .route("/:id")
   .get(getSubjectById)

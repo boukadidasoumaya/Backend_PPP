@@ -7,55 +7,86 @@ const { ObjectId } = mongoose.Types;
 
 import asyncHandler from "express-async-handler";
 
-export const getSubjects = async (req, res) => {
+export const getSubjects = asyncHandler(async (req, res) => {
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: {
+          path: "$timetables",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
-        $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
+        $unwind: {
+          path: "$class",
+          preserveNullAndEmptyArrays: true,
         },
       },
       {
         $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
       },
       {
-        $unwind: "$class",
+        $unwind: {
+          path: "$teacher",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
-        $unwind: "$subject",
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
+          },
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
       },
       {
-        $unwind: "$teacher",
+        $sort: {
+          "_id.SubjectName": 1,
+        },
       },
       {
         $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
-          },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
@@ -63,39 +94,43 @@ export const getSubjects = async (req, res) => {
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
-};
+});
 
 export const getSubjectById = asyncHandler(async (req, res) => {
   const subjectId = req.params.id;
-  const newId = new ObjectId(subjectId);
+  const subjectIdObj = new ObjectId(subjectId);
+  console.log(subjectId);
 
   try {
-    const subject = await TimeTable.aggregate([
+    const subject = await Subject.aggregate([
       {
         $match: {
-          subject_id: newId,
+          _id: subjectIdObj,
         },
       },
       {
         $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
+      {
+        $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
@@ -104,24 +139,37 @@ export const getSubjectById = asyncHandler(async (req, res) => {
         $unwind: "$class",
       },
       {
-        $unwind: "$subject",
-      },
-      {
         $unwind: "$teacher",
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $group: {
+          _id: {
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
@@ -140,30 +188,38 @@ export const getSubjectById = asyncHandler(async (req, res) => {
 });
 
 export const getSubjectByName = asyncHandler(async (req, res) => {
-  const subjectName = req.params.subjectName;
+  const subjectName = req.params.name; // Assuming the subject name is passed in the request params
 
   try {
-    const subject = await TimeTable.aggregate([
+    const subject = await Subject.aggregate([
+      {
+        $match: {
+          SubjectName: subjectName,
+        },
+      },
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
@@ -172,29 +228,43 @@ export const getSubjectByName = asyncHandler(async (req, res) => {
         $unwind: "$class",
       },
       {
-        $unwind: "$subject",
-      },
-      {
         $unwind: "$teacher",
       },
       {
-        $match: {
-          "subject.SubjectName": subjectName,
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
+          },
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
         },
       },
       {
         $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
-          },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
@@ -216,36 +286,36 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
   const { major } = req.params;
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
       },
       {
         $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
       },
       {
         $unwind: "$teacher",
@@ -256,27 +326,49 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given major",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -290,36 +382,36 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
   const { year } = req.params;
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
       },
       {
         $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
       },
       {
         $unwind: "$teacher",
@@ -330,26 +422,49 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given major",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -363,39 +478,25 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
   const { major, year } = req.params;
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
-      },
-      {
-        $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
-          from: "Teacher",
-          localField: "teacher_id",
-          foreignField: "_id",
-          as: "teacher",
-        },
-      },
-      {
-        $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
-      },
-      {
-        $unwind: "$teacher",
       },
       {
         $match: {
@@ -404,26 +505,63 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $lookup: {
+          from: "Teacher",
+          localField: "timetables.teacher_id",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      {
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given year",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -435,43 +573,35 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
 
 export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
   const teacherCIN = req.params.teacher;
-  console.log(req.params.teacher);
-  console.log(teacherCIN);
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
-      },
-      {
-        $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
-      },
-      {
-        $unwind: "$teacher",
       },
       {
         $match: {
@@ -479,27 +609,55 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given year",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -514,39 +672,33 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
   const year = req.params.year;
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
-      },
-      {
-        $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
-      },
-      {
-        $unwind: "$teacher",
       },
       {
         $match: {
@@ -555,26 +707,55 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given year",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -587,42 +768,35 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
 export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
   const teacherCIN = req.params.teacher;
   const major = req.params.major;
-  console.log(req.params);
 
   try {
-    const subjects = await TimeTable.aggregate([
+    const subjects = await Subject.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "subject_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
       {
         $lookup: {
           from: "Class",
-          localField: "class_id",
+          localField: "timetables.class_id",
           foreignField: "_id",
           as: "class",
         },
       },
       {
         $lookup: {
-          from: "Subject",
-          localField: "subject_id",
-          foreignField: "_id",
-          as: "subject",
-        },
-      },
-      {
-        $lookup: {
           from: "Teacher",
-          localField: "teacher_id",
+          localField: "timetables.teacher_id",
           foreignField: "_id",
           as: "teacher",
         },
-      },
-      {
-        $unwind: "$class",
-      },
-      {
-        $unwind: "$subject",
-      },
-      {
-        $unwind: "$teacher",
       },
       {
         $match: {
@@ -631,26 +805,55 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
         },
       },
       {
-        $project: {
-          Subject_id: "$subject_id",
-          SubjectName: "$subject.SubjectName",
-          module: "$subject.Module",
-          coeff: "$subject.Coeff",
-          major: "$class.Major",
-          year: "$class.Year",
-          teacher_name: {
-            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $group: {
+          _id: {
+            _id: "$_id",
+            SubjectName: "$SubjectName",
+            module: "$Module",
+            coeff: "$Coeff",
+            teacher_name: {
+              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+            },
           },
-          teacher_cin: "$teacher.CIN",
-          teacher_email: "$teacher.Email",
+          classes_years: {
+            $addToSet: {
+              $concat: [
+                { $toString: "$class.Major" },
+                " ",
+                { $toString: "$class.Year" },
+              ],
+            },
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.SubjectName": 1,
+        },
+      },
+      {
+        $project: {
+          _id: "$_id._id",
+          SubjectName: "$_id.SubjectName",
+          module: "$_id.module",
+          coeff: "$_id.coeff",
+          teacher_name: "$_id.teacher_name",
+          classes_years: 1,
         },
       },
     ]);
 
     if (subjects.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subject not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subjects not found for the given year",
+      });
     }
 
     res.status(200).json({ success: true, data: subjects });
@@ -667,39 +870,33 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
     const year = req.params.year;
 
     try {
-      const subjects = await TimeTable.aggregate([
+      const subjects = await Subject.aggregate([
+        {
+          $lookup: {
+            from: "Time_table",
+            localField: "_id",
+            foreignField: "subject_id",
+            as: "timetables",
+          },
+        },
+        {
+          $unwind: "$timetables",
+        },
         {
           $lookup: {
             from: "Class",
-            localField: "class_id",
+            localField: "timetables.class_id",
             foreignField: "_id",
             as: "class",
           },
         },
         {
           $lookup: {
-            from: "Subject",
-            localField: "subject_id",
-            foreignField: "_id",
-            as: "subject",
-          },
-        },
-        {
-          $lookup: {
             from: "Teacher",
-            localField: "teacher_id",
+            localField: "timetables.teacher_id",
             foreignField: "_id",
             as: "teacher",
           },
-        },
-        {
-          $unwind: "$class",
-        },
-        {
-          $unwind: "$subject",
-        },
-        {
-          $unwind: "$teacher",
         },
         {
           $match: {
@@ -709,26 +906,55 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
           },
         },
         {
-          $project: {
-            Subject_id: "$subject_id",
-            SubjectName: "$subject.SubjectName",
-            module: "$subject.Module",
-            coeff: "$subject.Coeff",
-            major: "$class.Major",
-            year: "$class.Year",
-            teacher_name: {
-              $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+          $unwind: "$class",
+        },
+        {
+          $unwind: "$teacher",
+        },
+        {
+          $group: {
+            _id: {
+              _id: "$_id",
+              SubjectName: "$SubjectName",
+              module: "$Module",
+              coeff: "$Coeff",
+              teacher_name: {
+                $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+              },
             },
-            teacher_cin: "$teacher.CIN",
-            teacher_email: "$teacher.Email",
+            classes_years: {
+              $addToSet: {
+                $concat: [
+                  { $toString: "$class.Major" },
+                  " ",
+                  { $toString: "$class.Year" },
+                ],
+              },
+            },
+          },
+        },
+        {
+          $sort: {
+            "_id.SubjectName": 1,
+          },
+        },
+        {
+          $project: {
+            _id: "$_id._id",
+            SubjectName: "$_id.SubjectName",
+            module: "$_id.module",
+            coeff: "$_id.coeff",
+            teacher_name: "$_id.teacher_name",
+            classes_years: 1,
           },
         },
       ]);
 
       if (subjects.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Subject not found" });
+        return res.status(404).json({
+          success: false,
+          message: "Subjects not found for the given year",
+        });
       }
 
       res.status(200).json({ success: true, data: subjects });
@@ -738,6 +964,23 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
     }
   }
 );
+
+export const getAllSubjects = asyncHandler(async (req, res) => {
+  try {
+    const distinctSubjects = await TimeTable.distinct("subject_id");
+    const subjectNames = await Subject.find(
+      { _id: { $in: distinctSubjects } },
+      "SubjectName"
+    );
+    const sortedSubjectNames = subjectNames
+      .map((subject) => subject.SubjectName)
+      .sort();
+    res.status(200).json({ subjects: sortedSubjectNames });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Server Error" });
+  }
+});
 
 export const createSubject = asyncHandler(async (req, res) => {
   const existingSubject = await Subject.findOne({
@@ -755,6 +998,7 @@ export const createSubject = asyncHandler(async (req, res) => {
 export const updateSubject = asyncHandler(async (req, res) => {
   const existingSubject = await Subject.findOne({
     SubjectName: req.body.SubjectName,
+    Module: req.body.Module,
     Coeff: req.body.Coeff,
   });
   if (!existingSubject) {
@@ -774,10 +1018,23 @@ export const updateSubject = asyncHandler(async (req, res) => {
 });
 
 export const deleteSubject = asyncHandler(async (req, res) => {
-  const subject = await Subject.findByIdAndDelete(req.params.id);
-  if (!subject) {
-    res.status(404);
-    throw new Error("Subject not found");
+  const subjectId = req.params.id;
+
+  // Step 1: Delete the subject itself
+  const deletedSubject = await Subject.findByIdAndDelete(subjectId);
+
+  if (!deletedSubject) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Subject not found" });
   }
-  res.status(200).json({ success: true, data: {} });
+
+  // Step 2: Delete associated timetable entries
+  const deletedTimetables = await TimeTable.deleteMany({
+    subject_id: subjectId,
+  });
+
+  res
+    .status(200)
+    .json({ success: true, data: { deletedSubject, deletedTimetables } });
 });
