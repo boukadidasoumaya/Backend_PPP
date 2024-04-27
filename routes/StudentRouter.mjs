@@ -1,5 +1,3 @@
-// give me router for student 
-
 import express from 'express';
 import { getStudents, getStudentById,getStudentsByMajor, createStudent, updateStudent, deleteStudent, getStudentsByYear, getStudentsByMajorAndByYear} from '../controllers/StudentController.mjs';
 import { createStudentsByCSV } from '../middleware/ManageCSVFile.mjs';

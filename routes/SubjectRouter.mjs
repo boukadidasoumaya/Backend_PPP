@@ -10,13 +10,18 @@ import {
   getSubjectsByTeacherAndMajor,
   getSubjectsByTeacherAndYear,
   getSubjectsByTeacherMajorAndYear,
+  getAllModules,
+  getAllSubjects,
   createSubject,
   updateSubject,
   deleteSubject,
-} from "../controllers/SubjectController.mjs";
+} from "../controllers/subjectController.mjs";
+
 const router = express.Router();
 
 router.route("/").get(getSubjects).post(createSubject);
+router.route("/modules").get(getAllModules);
+router.route("/subjects").get(getAllSubjects);
 router
   .route("/:id")
   .get(getSubjectById)
@@ -32,4 +37,5 @@ router.route("/teachermajor/:teacher/:major").get(getSubjectsByTeacherAndMajor);
 router
   .route("/teachermajoryear/:teacher/:major/:year")
   .get(getSubjectsByTeacherMajorAndYear);
+
 export default router;
