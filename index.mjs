@@ -8,6 +8,7 @@ import StudentRouter from "./routes/StudentRouter.mjs";
 import ClassRouter from "./routes/ClassRouter.mjs";
 import TeacherRouter from "./routes/TeacherRouter.mjs";
 import TimeTableRouter from "./routes/TimeTableRouter.mjs";
+// import subRouter from "./routes/subRouter.mjs";
 
 dotenv.config();
 const app = express();
@@ -29,5 +30,6 @@ app.use("/teachers", TeacherRouter);
 app.use("/timetables", TimeTableRouter);
 
 connectDb();
-app.listen(process.env.PORT , ()=>{
-   console.log("Server is running")});
+app.listen(process.env.PORT, () => {
+  console.log("Server is running");
+});

@@ -1,26 +1,24 @@
 import Student from "../models/StudentModel.mjs";
-import Class from '../models/ClassModel.mjs'; // Import the Class model
-import mongoose from 'mongoose';
-import asyncHandler from 'express-async-handler';
+import Class from "../models/ClassModel.mjs"; // Import the Class model
+import mongoose from "mongoose";
+import asyncHandler from "express-async-handler";
 
 import multer from "multer";
 const { ObjectId } = mongoose.Types; // Destructuring ObjectId from mongoose.Types
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, './uploads')
+    cb(null, "./uploads");
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, file.originalname + '-' + uniqueSuffix)
-  }
-})
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.originalname + "-" + uniqueSuffix);
+  },
+});
 
-const upload = multer({ storage: storage })
+const upload = multer({ storage: storage });
 
 // Your createStudent function and other code...
-
-
 
 // @desc    Get all students with Major, Year, and Group
 // @route   GET /students
@@ -441,4 +439,3 @@ export const deleteStudent = asyncHandler(async (req, res) => {
   }
   res.status(200).json({ success: true, data: {} });
 });
-
