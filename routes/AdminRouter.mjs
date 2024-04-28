@@ -1,19 +1,27 @@
-import express from 'express';
-import { login, register, deleteAdmin, updateAdmin , resetPassword,resetverif} from '../controllers/AdminController.mjs';
-import validationToken from '../middleware/ValidateToken.mjs';
+import express from "express";
+import {
+  login,
+  register,
+  getAllAdmins,
+  getAdminById,
+  deleteAdmin,
+  updateAdmin,
+  resetPassword,
+  resetverif,
+} from "../controllers/AdminController.mjs";
+import validationToken from "../middleware/ValidateToken.mjs";
 // Admin login
 const router = express.Router();
 
-router.post('/login', login);
+router.route("/").get(getAllAdmins);
 
-router.post('/resetverif', resetverif);
-router.post('/resetPassword', resetPassword);
-router.post('/register', register);
+router.post("/login", login);
+router.post("/resetverif", resetverif);
+router.post("/resetPassword", resetPassword);
+router.post("/register", register);
 
-router.delete('/:id', validationToken, deleteAdmin);
+router.route("/:id").get(getAdminById).delete(validationToken, deleteAdmin);
 
-
-router.put('/', validationToken, updateAdmin);
-
+router.put("/", validationToken, updateAdmin);
 
 export default router;
