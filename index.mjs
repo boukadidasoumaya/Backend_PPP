@@ -28,7 +28,6 @@ app.use("/students", StudentRouter);
 app.use("/classes", ClassRouter);
 app.use("/teachers", TeacherRouter);
 app.use("/timetables", TimeTableRouter);
-// app.use("/subjects",subRouter);
 
 connectDb();
 app.listen(process.env.PORT, () => {

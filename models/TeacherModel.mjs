@@ -10,10 +10,19 @@
 import mongoose from 'mongoose';
 
 
+function generateTeacherId() {
+    return Math.floor(2100000 + Math.random() * 2100000);
+  }
+  
 
 // Define schema
 
 const TeacherSchema = new mongoose.Schema({
+    Teacher_id: {
+        type: Number,
+        unique: true,
+        default: generateTeacherId // Set the default value to the generated student ID
+      },
     CIN: {
         type: String,
         required: [true, 'CIN is required'],

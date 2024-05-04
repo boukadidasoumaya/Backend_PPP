@@ -246,27 +246,68 @@ export const getTeachersBySubject = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get teachers by department
-// @route   GET /teachers/departments/:department
-// @access  Public
-/*export const getTeachersByDepartment = asyncHandler(async (req, res) => {
-  try {
-    const { department } = req.params;
-    const teachers = await Teacher.find({ Department: department });
-    res.status(200).json({ success: true, data: teachers });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: "Server Error" });
-  }
-});*/
 
-// @desc    Get teachers by department and year
-// @route   GET /teachers/departments/:department/year/:year
-// @access  Public
-export const getTeachersByDepartmentAndYear = asyncHandler(async (req, res) => {
+
+
+export const getTeachersByDepartmentAndSubject = asyncHandler(async (req, res) => {
   try {
-    const { department, year } = req.params;
-    const teachers = await Teacher.find({ Department: department, Year: year });
+    const { department, subject } = req.params;
+
+    const teachers = await Teacher.aggregate([
+      {
+        $match: { Department: department }, // Filter by department
+      },
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "teacher_id",
+          as: "timetable",
+        },
+      },
+      {
+        $unwind: "$timetable",
+      },
+      {
+        $lookup: {
+          from: "Subject",
+          localField: "timetable.subject_id",
+          foreignField: "_id",
+          as: "subject",
+        },
+      },
+      {
+        $unwind: "$subject",
+      },
+      {
+        $match: {
+          "subject.SubjectName": subject, // Filter by subject
+        }
+      },
+      {
+        $group: {
+          _id: "$_id",
+          CIN: { $first: "$CIN" },
+          FirstName: { $first: "$FirstName" },
+          LastName: { $first: "$LastName" },
+          Email: { $first: "$Email" },
+          Department: { $first: "$Department" },
+          Subjects: { $addToSet: "$subject.SubjectName" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          CIN: 1,
+          FirstName: 1,
+          LastName: 1,
+          Email: 1,
+          Department: 1,
+          Subjects: 1,
+        },
+      },
+    ]);
+
     res.status(200).json({ success: true, data: teachers });
   } catch (error) {
     console.error(error);
@@ -274,14 +315,161 @@ export const getTeachersByDepartmentAndYear = asyncHandler(async (req, res) => {
   }
 });
 
+
+
+
+
+export const getALLClasses = asyncHandler(async (req, res) => {
+  try {
+    const classes = await Class.aggregate([
+      {
+        $lookup: {
+          from: "Time_table",
+          localField: "_id",
+          foreignField: "class_id",
+          as: "timetables",
+        },
+      },
+      {
+        $unwind: "$timetables",
+      },
+      {
+        $lookup: {
+          from: "Teacher",
+          localField: "timetables.teacher_id",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      {
+        $match: {},
+      },
+      {
+        $project: {
+          _id: 0,
+          ClassName: 1,
+          Major: 1,
+          Year: 1,
+        },
+      },
+    ]);
+
+    if (classes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Classes not found",
+      });
+    }
+
+    res.status(200).json({ success: true, data: classes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+});
+
+// export const getTeachersByClass = asyncHandler(async (req, res) => {
+//   const className = req.params.class;
+
+//   try {
+//     const teachers = await Teacher.aggregate([
+//       {
+//         $lookup: {
+//           from: "Time_table",
+//           localField: "_id",
+//           foreignField: "teacher_id",
+//           as: "timetables",
+//         },
+//       },
+//       {
+//         $unwind: "$timetables",
+//       },
+//       {
+//         $lookup: {
+//           from: "Class",
+//           localField: "timetables.class_id",
+//           foreignField: "_id",
+//           as: "class",
+//         },
+//       },
+//       {
+//         $match: {
+//           "class.ClassName": className,
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$_id",
+//           teacher_name: {
+//             $concat: ["$FirstName", " ", "$LastName"],
+//           },
+//         },
+//       },
+//       {
+//         $project: {
+//           _id: 0,
+//           teacher_name: 1,
+//         },
+//       },
+//     ]);
+
+//     if (teachers.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Teachers not found for the given class",
+//       });
+//     }
+
+//     res.status(200).json({ success: true, data: teachers });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ success: false, message: "Server Error" });
+//   }
+// });
+
+
+
+const isCinExists = async (cin) => {
+  const existingTeacher = await Teacher.findOne({ CIN: cin });
+  return !!existingTeacher; // Renvoie true si le CIN existe déjà, sinon false
+};
+
+const isEmailExists = async (email) => {
+  const existingTeacher = await Teacher.findOne({ Email: email });
+  return !!existingTeacher; // Renvoie true si l'email existe déjà, sinon false
+};
+
 // @desc    Create new teacher
 // @route   POST /teachers
 // @access  Public
 export const createTeacher = asyncHandler(async (req, res) => {
-  const { CIN, FirstName, LastName, Email, Department } = req.body;
+  const { CIN, FirstName, LastName, Email, Department, ...teacherData } = req.body;
 
   try {
+    const isCinDuplicate = await isCinExists(CIN);
+    const isEmailDuplicate = await isEmailExists(Email);
+
+    if (isCinDuplicate && isEmailDuplicate) {
+      return res.status(400).json({
+        success: false,
+        errors: { cin: "CIN already exists", email: "Email Already exists" },
+      });
+    }
+    // Vérifie si le CIN existe déjà
+    if (isCinDuplicate) {
+      return res
+        .status(400)
+        .json({ success: false, errors: { cin: "CIN already exists" } });
+    }
+
+    // Vérifie si l'email existe déjà
+    if (isEmailDuplicate) {
+      return res
+        .status(400)
+        .json({ success: false, errors: { email: "Email already exists" } });
+    }
     const teacher = await Teacher.create({
+      ...teacherData,
       CIN,
       FirstName,
       LastName,
@@ -301,22 +489,73 @@ export const createTeacher = asyncHandler(async (req, res) => {
 // @access  Public
 export const updateTeacher = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { FirstName, LastName, CIN, Email, Department, ...teacherData } = req.body;
 
   try {
-    const teacher = await Teacher.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const existingTeacher = await Teacher.findById(id);
+    const currentCIN = existingTeacher.CIN;
+    const currentEmail = existingTeacher.Email;
 
+    const isCinDuplicate = await isCinExists(CIN);
+    const isEmailDuplicate = await isEmailExists(Email);
+
+    if (currentCIN !== CIN && currentEmail !== Email) {
+      if (isCinDuplicate && isEmailDuplicate) {
+        return res.status(400).json({
+          success: false,
+          errors: {
+            cin: "CIN already exists",
+            email: "Email Already exists",
+          },
+        });
+      }
+      // Check if the CIN already exists
+      if (isCinDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { cin: "CIN already exists" } });
+      }
+
+      // Check if the email already exists
+      if (isEmailDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { email: "Email already exists" } });
+      }
+    } else if (currentCIN !== CIN) {
+      if (isCinDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { cin: "CIN already exists" } });
+      }
+    } else if (currentEmail !== Email) {
+      if (isEmailDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { email: "Email already exists" } });
+      }
+    }
+
+    // Check if the teacher exists
+    const teacher = await Teacher.findById(id);
     if (!teacher) {
       return res
         .status(404)
         .json({ success: false, error: "Teacher not found" });
     }
 
+    // Update the teacher document
+    teacher.FirstName = FirstName;
+    teacher.LastName = LastName;
+    teacher.CIN = CIN;
+    teacher.Email = Email;
+    teacher.Department = Department;
+
+    await teacher.save();
+
     res.status(200).json({ success: true, data: teacher });
   } catch (error) {
-    console.error(error);
+    console.error(error); // Log the error for debugging
     res.status(400).json({ success: false, error: error.message });
   }
 });
