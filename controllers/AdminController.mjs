@@ -26,7 +26,13 @@ export const getAllAdmins = asyncHandler(async (req, res) => {
       })
     );
 
-    res.status(200).json({ success: true, data: hashedAdmins });
+    const sortedAdmins = hashedAdmins.sort((a, b) => {
+      if (a.User < b.User) return -1;
+      if (a.User > b.User) return 1;
+      return 0;
+    });
+
+    res.status(200).json({ success: true, data: sortedAdmins });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -97,6 +103,7 @@ export const resetverif = expressAsyncHandler(async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
 export const login = expressAsyncHandler(async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -122,6 +129,7 @@ export const login = expressAsyncHandler(async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 export const register = expressAsyncHandler(async (req, res) => {
   try {
     // Extract data from request body
@@ -129,7 +137,7 @@ export const register = expressAsyncHandler(async (req, res) => {
 
     // Check if the username or email already exists in the database
     const existingAdmin = await Admin.findOne({
-      $or: [{ username }, { mail }, { num }],
+      $or: [{ username }, { cin }, { mail }, { num }],
     });
     console.log(existingAdmin);
     if (existingAdmin) {
@@ -140,19 +148,25 @@ export const register = expressAsyncHandler(async (req, res) => {
     // Create a new user
     const admin = await Admin.create(req.body);
     console.log(admin);
+    if (req.originalUrl === "/api/admin/register") {
+      // Create JWT token for the newly registered user
+      const token = jwt.sign({ userId: admin._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
 
-    // Create JWT token for the newly registered user
-    const token = jwt.sign({ userId: admin._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    // Respond with success and JWT token
-    res.status(201).json({ message: "User registered successfully", token });
+      // Respond with success and JWT token
+      res.status(201).json({ message: "User registered successfully", token });
+    } else {
+      res
+        .status(200)
+        .json({ message: "User created successfully", data: admin });
+    }
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 export const deleteAdmin = expressAsyncHandler(async (req, res) => {
   try {
     // Extract user ID from request parameters
@@ -176,6 +190,7 @@ export const deleteAdmin = expressAsyncHandler(async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 export const resetPassword = expressAsyncHandler(async (req, res) => {
   try {
     const { cin } = req.body;
