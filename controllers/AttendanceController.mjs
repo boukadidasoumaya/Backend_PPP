@@ -1,6 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import Attendance from '../models/AttendanceModel.mjs';
 import moment from 'moment';
+import Student from '../models/StudentModel.mjs';
 
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -101,3 +102,99 @@ export const getMonthlyAttendance = expressAsyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Server Error' });
 }
 });
+export const getMonthlyClassAttendanceData = async () => {
+    try {
+      const startOfMonth = moment().startOf('month').toDate();
+      const endOfMonth = moment().endOf('month').toDate();
+  
+      const monthlyAttendance = await Attendance.aggregate([
+        {
+          $match: {
+            day: {
+              $gte: startOfMonth,
+              $lte: endOfMonth
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'students',
+            localField: 'student',
+            foreignField: '_id',
+            as: 'student'
+          }
+        },
+        {
+          $unwind: '$student'
+        },
+        {
+          $group: {
+            _id: '$student.class_id',
+            totalAttendance: { $sum: 1 }
+          }
+        },
+        {
+          $lookup: {
+            from: 'classes',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'class'
+          }
+        },
+        {
+          $unwind: '$class'
+        },
+        {
+          $project: {
+            _id: 0,
+            country: '$class.country', // Assuming class has a 'country' field
+            'hot dog': '$totalAttendance',
+            'hot dogColor': { $concat: ['hsl(', { $multiply: ['$totalAttendance', 10] }, ', 70%, 50%)'] }
+          }
+        }
+      ]);
+  
+      return monthlyAttendance;
+    } catch (error) {
+      console.error('Error calculating monthly class attendance:', error);
+      throw error;
+    }
+  };
+    export const calculateTotalStudentsPerMajor= expressAsyncHandler(async (req, res) => {
+    try {
+        console.log('Calculating total students per major...');
+      const totalStudentsPerMajor = await Student.aggregate([
+        {
+          $lookup: {
+            from: 'Class',
+            localField: 'class_id',
+            foreignField: '_id',
+            as: 'class'
+          }
+        },
+        {
+          $unwind: '$class'
+        },
+        {
+          $group: {
+            _id: '$class.Major',
+            totalStudents: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            major: '$_id',
+            totalStudents: 1
+          }
+        }
+      ]);
+      console.log('Total students per major:', totalStudentsPerMajor);
+  
+      res.status(200).json(totalStudentsPerMajor)
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Server Error' });
+        }
+    }
+    );
