@@ -17,6 +17,8 @@ function getWeekRange() {
 
 
 
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 export const getWeeklyAttendance = expressAsyncHandler(async (req, res) => {
   try {
     const startOfWeek = moment().startOf('week').toDate();
@@ -33,55 +35,45 @@ export const getWeeklyAttendance = expressAsyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: { $dayOfWeek: '$day' }, // Group by the day of the week
+          _id: { $dayOfWeek: { $add: ['$day', 1] } },
           totalAttendance: { $sum: 1 },
         },
       },
       {
         $project: {
           _id: 0,
-          dayOfWeek: { $subtract: ['$_id', 1] }, // Adjust day of the week to align with JavaScript's representation
-          totalAttendance: 1,
-        },
-      },
-      {
-        $addFields: {
           dayOfWeek: {
-            $cond: {
-              if: { $eq: ['$dayOfWeek', 0] },
-              then: 6,
-              else: { $subtract: ['$dayOfWeek', 1] }
-            }
-          }
+            $cond: { if: { $eq: ['$_id', 7] }, then: 0, else: '$_id' }
+          },
+          totalAttendance: '$totalAttendance'
         }
-      },
-      {
-        $sort: { dayOfWeek: 1 }, // Sort by day of the week
-      },
+      }
     ]);
 
-    const result = attendanceRecords.map(record => ({
-      x: getDayOfWeek(record.dayOfWeek), // Format day of the week
-      y: record.totalAttendance,
+    const allDays = Array.from({ length: 7 }, (_, i) => i);
+
+    const data = allDays.map(day => ({
+      x: WEEKDAYS[day],
+      y: (attendanceRecords.find(record => record.dayOfWeek === day) || { totalAttendance: 0 }).totalAttendance
     }));
+
+    const result = {
+      id: 'current-week',
+      color: 'hsl(355, 70%, 50%)',
+      data
+    };
 
     console.log('Start of Week:', startOfWeek);
     console.log('End of Week:', endOfWeek);
-    console.log('Attendance Records:', result);
+    console.log('Attendance Records:', attendanceRecords);
 
+    console.dir(result, { depth: null });
     res.status(200).json(result);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
-
-// Function to format day of the week
-function getDayOfWeek(dayOfWeek) {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[dayOfWeek];
-}
-
 export const getMonthlyAttendance = expressAsyncHandler(async (req, res) => {
   try {
     const startOfMonth = moment().startOf('month').toDate();
