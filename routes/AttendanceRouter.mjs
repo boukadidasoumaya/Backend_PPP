@@ -1,5 +1,8 @@
 import express from 'express';
-import {getAttendance} from '../controllers/AttendanceController.mjs';
+import {getWeeklyAttendance} from '../controllers/AttendanceController.mjs';
+import {getMonthlyAttendance} from '../controllers/AttendanceController.mjs';
 const router = express.Router();
-router.get('/attendance', getAttendance);
+router.get('/weeklyattendance', getWeeklyAttendance);
+router.get('/attendancemonthly', getMonthlyAttendance);
+
 export default router;
