@@ -162,7 +162,6 @@ export const getMonthlyClassAttendanceData = async () => {
   };
     export const calculateTotalStudentsPerMajor= expressAsyncHandler(async (req, res) => {
     try {
-        console.log('Calculating total students per major...');
       const totalStudentsPerMajor = await Student.aggregate([
         {
           $lookup: {
@@ -189,7 +188,6 @@ export const getMonthlyClassAttendanceData = async () => {
           }
         }
       ]);
-      console.log('Total students per major:', totalStudentsPerMajor);
   
       res.status(200).json(totalStudentsPerMajor)
         } catch (error) {
@@ -198,3 +196,40 @@ export const getMonthlyClassAttendanceData = async () => {
         }
     }
     );
+    export const calculateTotalStudentsPerYear = expressAsyncHandler(async (req, res) => {
+        try {
+            console.log('Calculating total students per year...');
+            const totalStudentsPerYear = await Student.aggregate([
+                {
+                    $lookup: {
+                        from: 'Class',
+                        localField: 'class_id',
+                        foreignField: '_id',
+                        as: 'class'
+                    }
+                },
+                {
+                    $unwind: '$class'
+                },
+                {
+                    $group: {
+                        _id: '$class.Year',
+                        totalStudents: { $sum: 1 }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        year: '$_id',
+                        totalStudents: 1
+                    }
+                }
+            ]);
+            console.log('Total students per year:', totalStudentsPerYear);
+    
+            res.status(200).json(totalStudentsPerYear);
+        } catch (error) {
+            console.error('Error calculating total students per year:', error);
+            res.status(500).json({ message: 'Server Error' });
+        }
+    });
