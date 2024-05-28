@@ -2,6 +2,9 @@ import expressAsyncHandler from 'express-async-handler';
 import Attendance from '../models/AttendanceModel.mjs';
 import moment from 'moment';
 import Student from '../models/StudentModel.mjs';
+import TimeTable from '../models/TimeTableModel.mjs';
+import Absence from '../models/AbscenceModel.mjs';
+import Class from '../models/ClassModel.mjs';
 
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -225,7 +228,6 @@ export const getMonthlyClassAttendanceData = async () => {
                     }
                 }
             ]);
-            console.log('Total students per year:', totalStudentsPerYear);
     
             res.status(200).json(totalStudentsPerYear);
         } catch (error) {
@@ -233,3 +235,96 @@ export const getMonthlyClassAttendanceData = async () => {
             res.status(500).json({ message: 'Server Error' });
         }
     });
+    
+function addMinutesToTime(time, minutesToAdd) {
+    const [hours, minutes] = time.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes + minutesToAdd);
+    const newHours = date.getHours().toString().padStart(2, '0');
+    const newMinutes = date.getMinutes().toString().padStart(2, '0');
+    return `${newHours}:${newMinutes}`;
+  }
+  
+  export const calculateAbsences = expressAsyncHandler(async (req, res) => {
+    try {
+        console.log('Calculating absences...');
+      const today = new Date();
+      const currentDay = today.toLocaleDateString('en-US', { weekday: 'long' });
+  
+      // Retrieve timetable entries for the current day
+      const timetableEntries = await TimeTable.find({ Day: currentDay });
+  console.log(currentDay);
+      for (const entry of timetableEntries) {
+        const { class_id, StartTime, EndTime } = entry;
+  
+        // Get the students of the class
+        const students = await Student.find({ class_id });
+  
+        for (const student of students) {
+          // Calculate the allowed time for attendance
+          const startTimeWithMargin = addMinutesToTime(StartTime, 15);
+  
+          // Check if the student has attendance for the given date and time within the margin
+          const attendanceRecord = await Attendance.findOne({
+            id: student._id.toString(),
+            day: today,
+            time: { $gte: StartTime, $lte: startTimeWithMargin }  // Assuming `time` is stored in "HH:mm" format
+          });
+  
+          if (!attendanceRecord) {
+           await Absence.create({
+              student_id: student._id,
+              timetable_id: entry._id,
+              date: today,
+             time: `${StartTime}-${EndTime}`
+           });
+           console.log('absence recorded for student:', student._id);
+          }
+        }
+      }
+  
+      res.status(200).json({ message: 'Absences calculated and recorded successfully.' });
+    } catch (error) {
+      console.error('Error calculating absences:', error);
+      res.status(500).json({ message: 'Server Error' });
+    }
+  });
+  export const calculateAbsencesPerMajor = expressAsyncHandler(async (req, res) => {
+    try {
+      const { startOfWeek, endOfWeek } = getCurrentWeekRange();
+  
+      // Fetch all absence records for the current week
+      const absences = await Absence.find({
+        date: {
+          $gte: startOfWeek,
+          $lte: endOfWeek
+        }
+      }).populate('student_id timetable_id');
+  
+      const absencesPerMajor = {};
+  
+      for (const absence of absences) {
+        const student = await Student.findById(absence.student_id);
+        const studentClass = await ClassModel.findById(student.class_id);
+  
+        const major = studentClass.Major;
+  
+        if (!absencesPerMajor[major]) {
+          absencesPerMajor[major] = 0;
+        }
+  
+        absencesPerMajor[major]++;
+      }
+  
+      res.status(200).json(absencesPerMajor);
+    } catch (error) {
+      console.error('Error calculating absences per major:', error);
+      res.status(500).json({ message: 'Server Error' });
+    }
+  });
+  
+  function getCurrentWeekRange() {
+    const startOfWeek = moment().startOf('isoWeek').toDate();
+    const endOfWeek = moment().endOf('isoWeek').toDate();
+    return { startOfWeek, endOfWeek };
+  }
