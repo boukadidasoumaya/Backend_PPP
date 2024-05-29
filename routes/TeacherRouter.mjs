@@ -10,7 +10,8 @@ import {
   getTeachersByDepartmentAndSubject,
   getAllDepartments,
   //getTeachersByClass
-  getALLClasses
+  getALLClasses,
+  getTeacherData
 } from "../controllers/TeacherController.mjs";
 
 const router = express.Router();
@@ -26,5 +27,6 @@ router.route("/departments/:department").get(getTeachersByDepartment);
 router.route("/subjects/:subject").get(getTeachersBySubject);
 router.route("/class").get(getALLClasses);
 router.route('/departments/subjects/:department/:subject').get(getTeachersByDepartmentAndSubject );
+router.route('/TeacherProfile/teacherData/:id').get(getTeacherData);
 
 export default router;

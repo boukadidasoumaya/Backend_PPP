@@ -316,6 +316,74 @@ export const getTeachersByDepartmentAndSubject = asyncHandler(async (req, res) =
 });
 
 
+export const getTeacherData = asyncHandler(async (req, res) => {
+  const teacherId = new mongoose.Types.ObjectId(req.params.id);
+
+  try {
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    const timetables = await TimeTable.aggregate([
+      { $match: { teacher_id: teacherId } },
+      {
+        $lookup: {
+          from: 'Subject',
+          localField: 'subject_id',
+          foreignField: '_id',
+          as: 'subject'
+        }
+      },
+      { $unwind: '$subject' },
+      {
+        $lookup: {
+          from: 'Class',
+          localField: 'class_id',
+          foreignField: '_id',
+          as: 'class'
+        }
+      },
+      { $unwind: '$class' },
+      {
+        $project: {
+          _id: 0,
+          subjectId: '$subject._id',
+          subjectName: '$subject.SubjectName',
+          major: '$class.Major',
+          group: '$class.Group'
+        }
+      }
+    ]);
+
+    const subjects = [];
+
+    timetables.forEach(timetable => {
+      const { subjectId, subjectName, major, group } = timetable;
+      const existingSubject = subjects.find(s => s.id.toString() === subjectId.toString());
+      if (existingSubject) {
+        existingSubject.classes.push({ major, group });
+      } else {
+        subjects.push({
+          id: subjectId,
+          subjectName,
+          classes: [{ major, group }]
+        });
+      }
+    });
+
+    const formattedSubjects = subjects.map(subject => ({
+      id: subject.id,
+      subjectName: subject.subjectName,
+      classes: subject.classes.map(cls => `${cls.major}/${cls.group}`)
+    }));
+
+    res.status(200).json({ success: true, data: { subjects: formattedSubjects } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Server Error' });
+  }
+});
 
 
 
