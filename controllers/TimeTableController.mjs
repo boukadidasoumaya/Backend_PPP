@@ -74,26 +74,25 @@ const getTimeTables = async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 };
-export const getTimeTablesByMajorAndYearAndGroup = async (req, res) => {
+export const getTimeTablesByMajorAndYear = async (req, res) => {
   try {
     // Récupérez les paramètres de la requête GET
-    const { major, year, group } = req.params;
+    const { major, year } = req.params;
 
     // Vérifiez si les paramètres sont présents
-    if (!major || !year || !group) {
-      return res.status(400).json({ success: false, error: "Veuillez fournir les paramètres 'major', 'year' et 'group'" });
+    if (!major || !year) {
+      return res.status(400).json({ success: false, error: "Veuillez fournir les paramètres 'major' et 'year'" });
     }
 
-    // Convertissez l'année et le groupe en nombre
+    // Convertissez l'année en nombre
     const yearNumber = parseInt(year);
-    const groupNumber = parseInt(group);
 
-    // Vérifiez si les paramètres 'year' et 'group' sont des nombres valides
-    if (isNaN(yearNumber) || isNaN(groupNumber)) {
-      return res.status(400).json({ success: false, error: "Les paramètres 'year' et 'group' doivent être des nombres valides" });
+    // Vérifiez si le paramètre 'year' est un nombre valide
+    if (isNaN(yearNumber)) {
+      return res.status(400).json({ success: false, error: "Le paramètre 'year' doit être un nombre valide" });
     }
 
-    // Filtrez les emplois du temps par major, année et groupe
+    // Filtrez les emplois du temps par major et année
     const timeTables = await TimeTable.aggregate([
       {
         $lookup: {
@@ -132,7 +131,6 @@ export const getTimeTablesByMajorAndYearAndGroup = async (req, res) => {
         $match: {
           "class.Major": major,
           "class.Year": yearNumber,
-          "class.Group": groupNumber,
         },
       },
       {
@@ -166,6 +164,7 @@ export const getTimeTablesByMajorAndYearAndGroup = async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 };
+
 
 const getTimeTableById = asyncHandler(async (req, res) => {
   const timeTableId = req.params.id;
@@ -601,7 +600,45 @@ const deleteTimeTable = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+export const dropTimeTablesByMajorYearAndSemester = asyncHandler(async (req, res) => {
+  try {
+    const { major, year, semester } = req.params;
 
+    // Vérifiez si les paramètres sont présents
+    if (!major || !year || !semester) {
+      return res.status(400).json({ success: false, error: "Veuillez fournir les paramètres 'major', 'year', et 'semester'" });
+    }
+
+    // Convertissez l'année en nombre
+    const yearNumber = parseInt(year);
+
+    // Vérifiez si le paramètre 'year' est un nombre valide
+    if (isNaN(yearNumber)) {
+      return res.status(400).json({ success: false, error: "Le paramètre 'year' doit être un nombre valide" });
+    }
+
+    // Récupérer les classes correspondant à major et year
+    const classes = await Class.find({ Major: major, Year: yearNumber });
+
+    if (classes.length === 0) {
+      return res.status(404).json({ success: false, error: "Aucune classe trouvée pour les paramètres donnés" });
+    }
+
+    // Récupérer les IDs des classes
+    const classIds = classes.map(cls => cls._id);
+
+    // Supprimer les timetables correspondant aux classes trouvées et au semestre donné
+    const result = await TimeTable.deleteMany({ class_id: { $in: classIds }, Semester: semester });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} time table entries deleted successfully`,
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
 export {
   getTimeTables,
   getTimeTableById,

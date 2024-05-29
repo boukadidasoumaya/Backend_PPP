@@ -33,7 +33,7 @@ export const importTimeTableFromCSV = async (req, res) => {
         // Cherchez le teacher_id dans la table des enseignants en fonction du Teacher_id
         const teacher = await Teacher.findOne({ Teacher_id: entry.Teacher_id });
       
-        console.log("teacher",teacher);
+       
         if (!teacher) {
           throw new Error(`L'enseignant avec l'ID '${entry.Teacher_id}' n'existe pas`);
         }
