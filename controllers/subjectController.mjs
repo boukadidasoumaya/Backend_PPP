@@ -1,10 +1,23 @@
 import Subject from "../models/SubjectModel.mjs";
 import TimeTable from "../models/TimeTableModel.mjs";
 import Modules from "../enums/moduleEnum.mjs";
+import asyncHandler from "express-async-handler";
 import { mongoose, Types } from "mongoose";
+import multer from "multer";
+
 const { ObjectId } = mongoose.Types;
 
-import asyncHandler from "express-async-handler";
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./uploads");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.originalname + "-" + uniqueSuffix);
+  },
+});
+
+const upload = multer({ storage: storage });
 
 export const getSubjects = asyncHandler(async (req, res) => {
   try {

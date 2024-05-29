@@ -16,10 +16,14 @@ import {
   updateSubject,
   deleteSubject,
 } from "../controllers/subjectController.mjs";
+import { importSubjectsFromCSV } from "../middleware/ManageCSVFileSubjects.mjs";
+import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ dest: "../uploads" });
 
 router.route("/").get(getSubjects).post(createSubject);
+router.route("/upload").post(upload.single("csv"), importSubjectsFromCSV);
 router.route("/modules").get(getAllModules);
 router.route("/subjects").get(getAllSubjects);
 router.route("/:id").put(updateSubject).delete(deleteSubject);
