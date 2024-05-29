@@ -4,7 +4,7 @@ import moment from 'moment';
 import Student from '../models/StudentModel.mjs';
 import TimeTable from '../models/TimeTableModel.mjs';
 import Absence from '../models/AbscenceModel.mjs';
-import Class from '../models/ClassModel.mjs';
+import ClassModel from '../models/ClassModel.mjs';
 
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -201,7 +201,6 @@ export const getMonthlyClassAttendanceData = async () => {
     );
     export const calculateTotalStudentsPerYear = expressAsyncHandler(async (req, res) => {
         try {
-            console.log('Calculating total students per year...');
             const totalStudentsPerYear = await Student.aggregate([
                 {
                     $lookup: {
@@ -278,7 +277,6 @@ function addMinutesToTime(time, minutesToAdd) {
               date: today,
              time: `${StartTime}-${EndTime}`
            });
-           console.log('absence recorded for student:', student._id);
           }
         }
       }
@@ -291,40 +289,65 @@ function addMinutesToTime(time, minutesToAdd) {
   });
   export const calculateAbsencesPerMajor = expressAsyncHandler(async (req, res) => {
     try {
-      const { startOfWeek, endOfWeek } = getCurrentWeekRange();
-  
-      // Fetch all absence records for the current week
-      const absences = await Absence.find({
-        date: {
-          $gte: startOfWeek,
-          $lte: endOfWeek
-        }
-      }).populate('student_id timetable_id');
-  
-      const absencesPerMajor = {};
-  
-      for (const absence of absences) {
-        const student = await Student.findById(absence.student_id);
-        const studentClass = await ClassModel.findById(student.class_id);
-  
-        const major = studentClass.Major;
-  
-        if (!absencesPerMajor[major]) {
-          absencesPerMajor[major] = 0;
-        }
-  
-        absencesPerMajor[major]++;
+        console.log('Calculating absences per major...');
+        
+        // Calculate the start and end of the current week
+        const now = new Date();
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+    
+        // Find absences within the current week
+        const absences = await Absence.find({
+          date: { $gte: startOfWeek, $lte: endOfWeek }
+        })
+        .populate({
+          path: 'timetable_id',
+          populate: {
+            path: 'class_id',
+            model: 'Class'
+          }
+        });
+    
+        // Aggregate absences per major
+        const absencesPerMajor = absences.reduce((acc, absence) => {
+          const major = absence.timetable_id.class_id.Major;
+          if (!acc[major]) {
+            acc[major] = 0;
+          }
+          acc[major]++;
+          return acc;
+        }, {});
+    
+        // Ensure all majors are represented in the result, even if they have zero absences
+        const majors = ['MPI', 'GL', 'RT', 'IIA', 'IMI', 'Master', 'Doctorat'];
+        const absencesData = majors.map((major, index) => {
+            return {
+              country: major,
+              'hot dog': absencesPerMajor[major] || 0,
+              'hot dogColor': `hsl(${index * 40}, 70%, 50%)`
+            };
+        });
+    
+        console.log(absencesData);
+        res.json(absencesData);
+      } catch (error) {
+        console.error('Error calculating absences per major:', error);
+        res.status(500).json({ error: 'Internal server error' });
       }
-  
-      res.status(200).json(absencesPerMajor);
-    } catch (error) {
-      console.error('Error calculating absences per major:', error);
-      res.status(500).json({ message: 'Server Error' });
-    }
-  });
-  
-  function getCurrentWeekRange() {
-    const startOfWeek = moment().startOf('isoWeek').toDate();
-    const endOfWeek = moment().endOf('isoWeek').toDate();
-    return { startOfWeek, endOfWeek };
-  }
+});
+
+
+const getCurrentWeekDates = () => {
+    const currentDate = new Date();
+    const firstDayOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
+    const lastDayOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay() + 6));
+    
+    // Set time to start and end of the day for accurate range querying
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+    lastDayOfWeek.setHours(23, 59, 59, 999);
+    
+    return { firstDayOfWeek, lastDayOfWeek };
+  };
