@@ -440,8 +440,6 @@ export const deleteStudent = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: {} });
 });
 
-
-
 export const dropStudentsByMajorAndYear = asyncHandler(async (req, res) => {
   try {
     const { major, year } = req.params;
