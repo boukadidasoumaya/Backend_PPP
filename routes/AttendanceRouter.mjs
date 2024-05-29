@@ -6,6 +6,7 @@ import {calculateTotalStudentsPerYear} from '../controllers/AttendanceController
 import {calculateTotalStudentsPerMajor} from '../controllers/AttendanceController.mjs';
 import {calculateAbsences} from '../controllers/AttendanceController.mjs';
 import {calculateAbsencesPerMajor} from '../controllers/AttendanceController.mjs';
+import {calculateAbsencesPerYear} from '../controllers/AttendanceController.mjs';
 const router = express.Router();
 router.get('/weeklyattendance', getWeeklyAttendance);
 router.get('/attendancemonthly', getMonthlyAttendance);
@@ -14,4 +15,5 @@ router.get('/calculateTotalStudentsPerMajor', calculateTotalStudentsPerMajor);
 router.get('/calculateTotalStudentsPerYear', calculateTotalStudentsPerYear );
 router.get('/abscence',calculateAbsences)
 router.get('/calculateAbsencesPerMajor',calculateAbsencesPerMajor)
+router.get('/calculateAbsencesPerYear',calculateAbsencesPerYear)
 export default router;

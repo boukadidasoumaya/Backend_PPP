@@ -351,3 +351,90 @@ const getCurrentWeekDates = () => {
     
     return { firstDayOfWeek, lastDayOfWeek };
   };
+  export const calculateAbsencesPerYear = expressAsyncHandler(async (req, res) => {
+    try {
+        console.log('Calculating absences and total students per year...');
+        
+        // Calculate the start and end of the current week
+        const now = new Date();
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+    
+        // Find absences within the current week
+        const absences = await Absence.find({
+          date: { $gte: startOfWeek, $lte: endOfWeek }
+        })
+        .populate({
+          path: 'timetable_id',
+          populate: {
+            path: 'class_id',
+            model: 'Class'
+          }
+        });
+    
+        // Aggregate absences per year
+        const absencesPerYear = absences.reduce((acc, absence) => {
+          const year = absence.timetable_id.class_id.Year;
+          if (!acc[year]) {
+            acc[year] = 0;
+          }
+          acc[year]++;
+          return acc;
+        }, {});
+    
+        // Ensure all years are represented in the result, even if they have zero absences
+        const years = [1, 2, 3, 4, 5, 6]; // Adjust this array according to your school's year system
+        const absencesData = years.map((year, index) => {
+            return {
+              country: `Year ${year}`,
+              'absences': absencesPerYear[year] || 0,
+              'totalStudents': 0 // This will be updated later
+            };
+        });
+
+        // Fetch total students per year
+        const totalStudentsPerYear = await Student.aggregate([
+            {
+                $lookup: {
+                    from: 'Class',
+                    localField: 'class_id',
+                    foreignField: '_id',
+                    as: 'class'
+                }
+            },
+            {
+                $unwind: '$class'
+            },
+            {
+                $group: {
+                    _id: '$class.Year',
+                    totalStudents: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    year: '$_id',
+                    totalStudents: 1
+                }
+            }
+        ]);
+
+        // Update absencesData with total students
+        absencesData.forEach(absence => {
+            const yearData = totalStudentsPerYear.find(data => data.year === parseInt(absence.country.split(' ')[1]));
+            if (yearData) {
+                absence.totalStudents = yearData.totalStudents;
+            }
+        });
+
+        console.log(absencesData);
+        res.json(absencesData);
+    } catch (error) {
+        console.error('Error calculating absences and total students per year:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
