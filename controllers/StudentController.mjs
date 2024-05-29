@@ -439,3 +439,62 @@ export const deleteStudent = asyncHandler(async (req, res) => {
   }
   res.status(200).json({ success: true, data: {} });
 });
+
+
+
+export const dropStudentsByMajorAndYear = asyncHandler(async (req, res) => {
+  try {
+    const { major, year } = req.params;
+
+    let classFilter = {};
+
+    // If "All Majors" is specified, ignore the major filter
+    if (major !== "All Majors") {
+      classFilter.Major = major;
+    }
+
+    // If "All Years" is specified, ignore the year filter
+    if (year !== "All Years") {
+      const yearNumber = parseInt(year);
+      // Check if the parameter 'year' is a valid number
+      if (isNaN(yearNumber)) {
+        return res.status(400).json({ success: false, error: "The 'year' parameter must be a valid number" });
+      }
+      classFilter.Year = yearNumber;
+    }
+
+    // Find all classes matching the given major and/or year
+    const classes = await Class.find(classFilter);
+
+    if (classes.length === 0) {
+      return res.status(404).json({ success: false, error: "No classes found for the given parameters" });
+    }
+
+    // Extract the class IDs
+    const classIds = classes.map(cls => cls._id);
+
+    // Find all students belonging to the classes
+    const students = await Student.find({ class_id: { $in: classIds } });
+
+    if (students.length === 0) {
+      return res.status(404).json({ success: false, error: "No students found for the given parameters" });
+    }
+
+    // Extract the student IDs
+    const studentIds = students.map(student => student._id);
+
+    // Delete the attendance records for the students
+    // await Attendance.deleteMany({ student_id: { $in: studentIds } });
+
+    // Delete the students
+    await Student.deleteMany({ _id: { $in: studentIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${students.length} students and their attendance records deleted successfully`,
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});

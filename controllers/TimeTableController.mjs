@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 const { ObjectId } = mongoose.Types;
 
 import asyncHandler from "express-async-handler";
+import sendEmail from "./EmailSender.mjs";
 
 // Controller function to create a new time table entry
 const getTimeTables = async (req, res) => {
@@ -73,6 +74,97 @@ const getTimeTables = async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 };
+export const getTimeTablesByMajorAndYear = async (req, res) => {
+  try {
+    // Récupérez les paramètres de la requête GET
+    const { major, year } = req.params;
+
+    // Vérifiez si les paramètres sont présents
+    if (!major || !year) {
+      return res.status(400).json({ success: false, error: "Veuillez fournir les paramètres 'major' et 'year'" });
+    }
+
+    // Convertissez l'année en nombre
+    const yearNumber = parseInt(year);
+
+    // Vérifiez si le paramètre 'year' est un nombre valide
+    if (isNaN(yearNumber)) {
+      return res.status(400).json({ success: false, error: "Le paramètre 'year' doit être un nombre valide" });
+    }
+
+    // Filtrez les emplois du temps par major et année
+    const timeTables = await TimeTable.aggregate([
+      {
+        $lookup: {
+          from: "Class",
+          localField: "class_id",
+          foreignField: "_id",
+          as: "class",
+        },
+      },
+      {
+        $lookup: {
+          from: "Subject",
+          localField: "subject_id",
+          foreignField: "_id",
+          as: "subject",
+        },
+      },
+      {
+        $lookup: {
+          from: "Teacher",
+          localField: "teacher_id",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      {
+        $unwind: "$class",
+      },
+      {
+        $unwind: "$subject",
+      },
+      {
+        $unwind: "$teacher",
+      },
+      {
+        $match: {
+          "class.Major": major,
+          "class.Year": yearNumber,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          Day: 1,
+          Room: 1,
+          StartTime: 1,
+          EndTime: 1,
+          Semester : 1,
+          SubjectName: "$subject.SubjectName",
+          module: "$subject.Module",
+          coeff: "$subject.Coeff",
+          major: "$class.Major",
+          year: "$class.Year",
+          group: "$class.Group",
+          teacher_name: {
+            $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
+          },
+          teacher_cin: "$teacher.CIN",
+          teacher_email: "$teacher.Email",
+          Week: 1,
+        },
+      },
+    ]);
+
+    // Envoyez les emplois du temps filtrés en réponse
+    res.status(200).json({ success: true, data: timeTables });
+  } catch (error) {
+    // Gérez les erreurs
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
 
 const getTimeTableById = asyncHandler(async (req, res) => {
   const timeTableId = req.params.id;
@@ -508,7 +600,45 @@ const deleteTimeTable = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+export const dropTimeTablesByMajorYearAndSemester = asyncHandler(async (req, res) => {
+  try {
+    const { major, year, semester } = req.params;
 
+    // Vérifiez si les paramètres sont présents
+    if (!major || !year || !semester) {
+      return res.status(400).json({ success: false, error: "Veuillez fournir les paramètres 'major', 'year', et 'semester'" });
+    }
+
+    // Convertissez l'année en nombre
+    const yearNumber = parseInt(year);
+
+    // Vérifiez si le paramètre 'year' est un nombre valide
+    if (isNaN(yearNumber)) {
+      return res.status(400).json({ success: false, error: "Le paramètre 'year' doit être un nombre valide" });
+    }
+
+    // Récupérer les classes correspondant à major et year
+    const classes = await Class.find({ Major: major, Year: yearNumber });
+
+    if (classes.length === 0) {
+      return res.status(404).json({ success: false, error: "Aucune classe trouvée pour les paramètres donnés" });
+    }
+
+    // Récupérer les IDs des classes
+    const classIds = classes.map(cls => cls._id);
+
+    // Supprimer les timetables correspondant aux classes trouvées et au semestre donné
+    const result = await TimeTable.deleteMany({ class_id: { $in: classIds }, Semester: semester });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} time table entries deleted successfully`,
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
 export {
   getTimeTables,
   getTimeTableById,
