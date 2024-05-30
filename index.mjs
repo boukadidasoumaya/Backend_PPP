@@ -8,8 +8,7 @@ import StudentRouter from "./routes/StudentRouter.mjs";
 import ClassRouter from "./routes/ClassRouter.mjs";
 import TeacherRouter from "./routes/TeacherRouter.mjs";
 import TimeTableRouter from "./routes/TimeTableRouter.mjs";
-// import subRouter from "./routes/subRouter.mjs";
-
+import AttendanceRouter  from "./routes/AttendanceRouter.mjs"
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -28,6 +27,7 @@ app.use("/students", StudentRouter);
 app.use("/classes", ClassRouter);
 app.use("/teachers", TeacherRouter);
 app.use("/timetables", TimeTableRouter);
+app.use("/api/attendance", AttendanceRouter);
 
 connectDb();
 app.listen(process.env.PORT, () => {

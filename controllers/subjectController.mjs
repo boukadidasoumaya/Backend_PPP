@@ -1,8 +1,7 @@
 import Subject from "../models/SubjectModel.mjs";
-import Class from "../models/ClassModel.mjs";
 import TimeTable from "../models/TimeTableModel.mjs";
-import Teacher from "../models/TeacherModel.mjs";
-import mongoose from "mongoose";
+import Modules from "../enums/moduleEnum.mjs";
+import { mongoose, Types } from "mongoose";
 const { ObjectId } = mongoose.Types;
 
 import asyncHandler from "express-async-handler";
@@ -54,17 +53,17 @@ export const getSubjects = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -75,17 +74,30 @@ export const getSubjects = asyncHandler(async (req, res) => {
         },
       },
       {
-        $sort: {
-          "_id.SubjectName": 1,
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
         },
       },
       {
+        $sort: {
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+        },
+      },
+
+      {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -98,6 +110,11 @@ export const getSubjects = asyncHandler(async (req, res) => {
 
 export const getSubjectById = asyncHandler(async (req, res) => {
   const subjectId = req.params.id;
+  if (!Types.ObjectId.isValid(subjectId)) {
+    return res
+      .status(400)
+      .json({ success: false, error: "Invalid subject ID" });
+  }
   const subjectIdObj = new ObjectId(subjectId);
   console.log(subjectId);
 
@@ -143,16 +160,17 @@ export const getSubjectById = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -163,12 +181,29 @@ export const getSubjectById = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
+        $sort: {
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+        },
+      },
+      {
         $project: {
           _id: 0,
           SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          Module: "$_id.Module",
+          Coeff: "$_id.Coeff",
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -232,17 +267,17 @@ export const getSubjectByName = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -253,17 +288,29 @@ export const getSubjectByName = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -327,17 +374,17 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -348,17 +395,29 @@ export const getSubjectsByMajor = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -423,17 +482,17 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -444,17 +503,29 @@ export const getSubjectsByYear = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -520,17 +591,17 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -541,17 +612,29 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -571,8 +654,9 @@ export const getSubjectsByMajorAndByYear = asyncHandler(async (req, res) => {
   }
 });
 
-export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
-  const teacherCIN = req.params.teacher;
+export const getSubjectsByModule = asyncHandler(async (req, res) => {
+  const Mod = req.params.module;
+  console.log(Mod);
 
   try {
     const subjects = await Subject.aggregate([
@@ -605,7 +689,7 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
       },
       {
         $match: {
-          "teacher.CIN": teacherCIN,
+          Module: Mod,
         },
       },
       {
@@ -616,17 +700,17 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -637,17 +721,29 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -667,8 +763,8 @@ export const getSubjectsByTeacher = asyncHandler(async (req, res) => {
   }
 });
 
-export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
-  const teacherCIN = req.params.teacher;
+export const getSubjectsByModuleAndYear = asyncHandler(async (req, res) => {
+  const Mod = req.params.module;
   const year = req.params.year;
 
   try {
@@ -702,7 +798,7 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
       },
       {
         $match: {
-          "teacher.CIN": teacherCIN,
+          Module: Mod,
           "class.Year": parseInt(year),
         },
       },
@@ -714,17 +810,17 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -735,17 +831,29 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
-          "_id.SubjectName": 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
         },
       },
       {
         $project: {
           _id: "_id._id",
           SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          Module: "$_id.Module",
+          Coeff: "$_id.Coeff",
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -765,8 +873,8 @@ export const getSubjectsByTeacherAndYear = asyncHandler(async (req, res) => {
   }
 });
 
-export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
-  const teacherCIN = req.params.teacher;
+export const getSubjectsByModuleAndMajor = asyncHandler(async (req, res) => {
+  const Mod = req.params.module;
   const major = req.params.major;
 
   try {
@@ -800,7 +908,7 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
       },
       {
         $match: {
-          "teacher.CIN": teacherCIN,
+          Module: Mod,
           "class.Major": major,
         },
       },
@@ -812,17 +920,17 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            _id: "$_id",
-            SubjectName: "$SubjectName",
-            module: "$Module",
-            coeff: "$Coeff",
-            teacher_name: {
+          _id: "$_id",
+          SubjectName: { $first: "$SubjectName" },
+          Module: { $first: "$Module" },
+          Coeff: { $first: "$Coeff" },
+          teacher_names: {
+            $push: {
               $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
             },
           },
-          classes_years: {
-            $addToSet: {
+          classes_year: {
+            $push: {
               $concat: [
                 { $toString: "$class.Major" },
                 " ",
@@ -833,17 +941,28 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
         },
       },
       {
+        $set: {
+          teacher_name: {
+            $setIntersection: ["$teacher_names", "$teacher_names"],
+          },
+          classes_years: {
+            $setIntersection: ["$classes_year", "$classes_year"],
+          },
+        },
+      },
+      {
         $sort: {
           "_id.SubjectName": 1,
+          "_id.Module": 1,
         },
       },
       {
         $project: {
-          _id: "$_id._id",
-          SubjectName: "$_id.SubjectName",
-          module: "$_id.module",
-          coeff: "$_id.coeff",
-          teacher_name: "$_id.teacher_name",
+          _id: 1,
+          SubjectName: 1,
+          Module: 1,
+          Coeff: 1,
+          teacher_name: 1,
           classes_years: 1,
         },
       },
@@ -863,9 +982,9 @@ export const getSubjectsByTeacherAndMajor = asyncHandler(async (req, res) => {
   }
 });
 
-export const getSubjectsByTeacherMajorAndYear = asyncHandler(
+export const getSubjectsByModuleMajorAndYear = asyncHandler(
   async (req, res) => {
-    const teacherCIN = req.params.teacher;
+    const Mod = req.params.module;
     const major = req.params.major;
     const year = req.params.year;
 
@@ -900,7 +1019,7 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
         },
         {
           $match: {
-            "teacher.CIN": teacherCIN,
+            Module: Mod,
             "class.Major": major,
             "class.Year": parseInt(year),
           },
@@ -913,17 +1032,17 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
         },
         {
           $group: {
-            _id: {
-              _id: "$_id",
-              SubjectName: "$SubjectName",
-              module: "$Module",
-              coeff: "$Coeff",
-              teacher_name: {
+            _id: "$_id",
+            SubjectName: { $first: "$SubjectName" },
+            Module: { $first: "$Module" },
+            Coeff: { $first: "$Coeff" },
+            teacher_names: {
+              $push: {
                 $concat: ["$teacher.FirstName", " ", "$teacher.LastName"],
               },
             },
-            classes_years: {
-              $addToSet: {
+            classes_year: {
+              $push: {
                 $concat: [
                   { $toString: "$class.Major" },
                   " ",
@@ -934,17 +1053,29 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
           },
         },
         {
+          $set: {
+            teacher_name: {
+              $setIntersection: ["$teacher_names", "$teacher_names"],
+            },
+            classes_years: {
+              $setIntersection: ["$classes_year", "$classes_year"],
+            },
+          },
+        },
+        {
           $sort: {
             "_id.SubjectName": 1,
+            "_id.Module": 1,
+            "_id.Coeff": 1,
           },
         },
         {
           $project: {
-            _id: "$_id._id",
-            SubjectName: "$_id.SubjectName",
-            module: "$_id.module",
-            coeff: "$_id.coeff",
-            teacher_name: "$_id.teacher_name",
+            _id: 1,
+            SubjectName: 1,
+            Module: 1,
+            Coeff: 1,
+            teacher_name: 1,
             classes_years: 1,
           },
         },
@@ -965,26 +1096,27 @@ export const getSubjectsByTeacherMajorAndYear = asyncHandler(
   }
 );
 
+export const getAllModules = asyncHandler(async (req, res) => {
+  try {
+    res.status(200).json({ success: true, data: Object.values(Modules) });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 export const getAllSubjects = asyncHandler(async (req, res) => {
   try {
-    const distinctSubjects = await TimeTable.distinct("subject_id");
-    const subjectNames = await Subject.find(
-      { _id: { $in: distinctSubjects } },
-      "SubjectName"
-    );
-    const sortedSubjectNames = subjectNames
-      .map((subject) => subject.SubjectName)
-      .sort();
-    res.status(200).json({ subjects: sortedSubjectNames });
+    const subjects = await Subject.distinct("SubjectName");
+    res.status(200).json({ success: true, data: subjects });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: "Server Error" });
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
 export const createSubject = asyncHandler(async (req, res) => {
   const existingSubject = await Subject.findOne({
     SubjectName: req.body.SubjectName,
+    Module: req.body.Module,
     Coeff: req.body.Coeff,
   });
   if (!existingSubject) {
@@ -996,24 +1128,39 @@ export const createSubject = asyncHandler(async (req, res) => {
 });
 
 export const updateSubject = asyncHandler(async (req, res) => {
-  const existingSubject = await Subject.findOne({
-    SubjectName: req.body.SubjectName,
-    Module: req.body.Module,
-    Coeff: req.body.Coeff,
-  });
-  if (!existingSubject) {
+  try {
+    // Find the existing subject by SubjectName, Module, and Coeff
+    const existingSubject = await Subject.findOne({
+      SubjectName: req.body.SubjectName,
+      Module: req.body.Module,
+      Coeff: req.body.Coeff,
+    });
+
+    // If the existing subject is found
+    if (existingSubject) {
+      // Update the subject_id of related timetables to the new subject's _id
+      await TimeTable.updateMany(
+        { subject_id: req.params.id },
+        { $set: { subject_id: existingSubject._id } }
+      );
+    }
+
+    // Update the subject
     const subject = await Subject.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
+    // If subject not found
     if (!subject) {
       res.status(404);
       throw new Error("Subject not found");
     }
+
+    // Respond with the updated subject
     res.status(200).json({ success: true, data: subject });
-  } else {
-    res.status(400).json({ success: false, message: "Subject already exists" });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
