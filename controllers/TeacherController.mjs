@@ -648,3 +648,33 @@ export const deleteTeacher = asyncHandler(async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 });
+
+// @desc    Delete teachers by department and their timetables
+// @route   DELETE /teachers/departments/:department
+// @access  Public
+export const deleteTeachersByDepartment = asyncHandler(async (req, res) => {
+  const { department } = req.params;
+
+  try {
+    // Find the teachers by department
+    const teachers = await Teacher.find({ Department: department });
+
+    if (!teachers.length) {
+      return res.status(404).json({ success: false, message: "No teachers found in this department" });
+    }
+
+    // Get the IDs of the teachers to delete
+    const teacherIds = teachers.map(teacher => teacher._id);
+
+    // Delete the timetables for these teachers
+    await TimeTable.deleteMany({ teacher_id: { $in: teacherIds } });
+
+    // Delete the teachers
+    await Teacher.deleteMany({ _id: { $in: teacherIds } });
+
+    res.status(200).json({ success: true, message: "Teachers and their timetables deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Server Error" });
+  }
+});

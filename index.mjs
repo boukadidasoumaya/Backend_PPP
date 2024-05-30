@@ -21,6 +21,7 @@ app.use(
   })
 );
 
+
 app.use("/api/subjects", subjectRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/students", StudentRouter);
