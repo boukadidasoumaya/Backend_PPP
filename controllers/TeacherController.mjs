@@ -316,8 +316,13 @@ export const getTeachersByDepartmentAndSubject = asyncHandler(async (req, res) =
 });
 
 
+
+
+// @desc    Get teacher data with timetable and subjects
+// @route   GET /teachers/:id/data
+// @access  Public
 export const getTeacherData = asyncHandler(async (req, res) => {
-  const teacherId = new mongoose.Types.ObjectId(req.params.id);
+  const teacherId = new ObjectId(req.params.id);
 
   try {
     const teacher = await Teacher.findById(teacherId);
@@ -351,31 +356,29 @@ export const getTeacherData = asyncHandler(async (req, res) => {
           subjectId: '$subject._id',
           subjectName: '$subject.SubjectName',
           major: '$class.Major',
-          group: '$class.Group'
+          group: '$class.Group',
+          year: '$class.Year'
         }
       }
     ]);
 
-    const subjects = [];
+    const subjectsMap = new Map();
 
-    timetables.forEach(timetable => {
-      const { subjectId, subjectName, major, group } = timetable;
-      const existingSubject = subjects.find(s => s.id.toString() === subjectId.toString());
-      if (existingSubject) {
-        existingSubject.classes.push({ major, group });
-      } else {
-        subjects.push({
+    timetables.forEach(({ subjectId, subjectName, major, group ,year}) => {
+      if (!subjectsMap.has(subjectId.toString())) {
+        subjectsMap.set(subjectId.toString(), {
           id: subjectId,
-          subjectName,
-          classes: [{ major, group }]
+          subjectName: subjectName,
+          classes: new Set(),
         });
       }
+      subjectsMap.get(subjectId.toString()).classes.add(`${major}${year}/${group}`);
     });
 
-    const formattedSubjects = subjects.map(subject => ({
+    const formattedSubjects = Array.from(subjectsMap.values()).map(subject => ({
       id: subject.id,
       subjectName: subject.subjectName,
-      classes: subject.classes.map(cls => `${cls.major}/${cls.group}`)
+      classes: Array.from(subject.classes),
     }));
 
     res.status(200).json({ success: true, data: { subjects: formattedSubjects } });
@@ -384,6 +387,7 @@ export const getTeacherData = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 });
+
 
 
 
