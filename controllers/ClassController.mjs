@@ -73,7 +73,14 @@ export const deleteClass = asyncHandler(async (req, res) => {
   }
   res.status(200).json({ success: true, data: {} });
 });
-
+export const countClasses = asyncHandler(async (req, res) => {
+  try {
+    const count = await Class.countDocuments({});
+    res.json({ totalClasses: count });
+} catch (error) {
+    res.status(500).json({ error: 'An error occurred while counting the documents' });
+}
+});
 
 
 

@@ -432,11 +432,18 @@ export const deleteStudent = asyncHandler(async (req, res) => {
 export const totalStudents = asyncHandler(async (req, res) => {
 
   try {
-    console.log("total students");
     const totalStudents = await Student.countDocuments();
     res.send(`Total number of students: ${totalStudents}`);
   } catch (error) {
     console.error('Error calculating total students:', error);
     res.status(500).send('Internal server error');
   }
+});
+export const countStudents = asyncHandler(async (req, res) => {
+  try {
+    const count = await Student.countDocuments({});
+    res.json({ totalStudent: count });
+} catch (error) {
+    res.status(500).json({ error: 'An error occurred while counting the documents' });
+}
 });

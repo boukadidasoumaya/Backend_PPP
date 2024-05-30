@@ -438,3 +438,20 @@ const getCurrentWeekDates = () => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+export const calculateAverageAbsences = expressAsyncHandler(async (req, res) => {
+try {
+  const absenceCount = await Absence.countDocuments({});
+  const attendanceCount = await Attendance.countDocuments({});
+
+  const total = attendanceCount + absenceCount;
+  const averageAbsencesPercentage = (absenceCount / total) * 100;
+
+  res.json({ 
+      totalAbsences: absenceCount, 
+      totalAttendances: attendanceCount, 
+      averageAbsencesPercentage: averageAbsencesPercentage.toFixed(2) 
+  });
+} catch (error) {
+  res.status(500).json({ error: 'An error occurred while calculating average absences' });
+}
+});

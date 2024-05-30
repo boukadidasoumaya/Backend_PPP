@@ -58,8 +58,15 @@ export const deleteTeacher = asyncHandler(async (req, res) => {
   }
   res.status(200).json({ success: true, data: {} });
 });
-
-
+export const countTeachers = asyncHandler(async (req, res) => {
+  try {
+    const count = await Teacher.countDocuments({});
+    console.log(count);
+    res.json({ totalProfessors: count });
+} catch (error) {
+    res.status(500).json({ error: 'An error occurred while counting the documents' });
+}
+});
 
 
 

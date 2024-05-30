@@ -7,8 +7,10 @@ import {calculateTotalStudentsPerMajor} from '../controllers/AttendanceControlle
 import {calculateAbsences} from '../controllers/AttendanceController.mjs';
 import {calculateAbsencesPerMajor} from '../controllers/AttendanceController.mjs';
 import {calculateAbsencesPerYear} from '../controllers/AttendanceController.mjs';
+import {calculateAverageAbsences} from '../controllers/AttendanceController.mjs';
 const router = express.Router();
 router.get('/weeklyattendance', getWeeklyAttendance);
+router.get('/calculateAverageAbsences', calculateAverageAbsences);
 router.get('/attendancemonthly', getMonthlyAttendance);
 router.get('/attendanceclassmonthly', getMonthlyClassAttendanceData);
 router.get('/calculateTotalStudentsPerMajor', calculateTotalStudentsPerMajor);
