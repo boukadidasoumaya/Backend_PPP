@@ -10,17 +10,17 @@
 import mongoose from 'mongoose';
 
 
-function generateTeacherId() {
-    return Math.floor(2100000 + Math.random() * 2100000);
-  }
+// function generateTeacherId() {
+//     return Math.floor(2100000 + Math.random() * 2100000);
+//   }
   
 
 // Define schema
 const TeacherSchema = new mongoose.Schema({
     Teacher_id: {
-        type: Number,
+        type: String,
         unique: true,
-        default: generateTeacherId // Set the default value to the generated student ID
+        
       },
     CIN: {
         type: String,
@@ -31,12 +31,12 @@ const TeacherSchema = new mongoose.Schema({
     FirstName: {
         type: String,
         required: [true, 'First Name is required'],
-        match: [/^[a-zA-Z]+$/, 'First Name must contain only letters']
+        match: [/^[a-zA-Z \ ]+$/, 'First Name must contain only letters']
     },
     LastName: {
         type: String,
         required: [true, 'Last Name is required'],
-        match: [/^[a-zA-Z]+$/, 'Last Name must contain only letters']
+        match: [/^[a-zA-Z \ ]+$/, 'Last Name must contain only letters']
     },
     Email: {
         type: String,
