@@ -128,8 +128,9 @@ const generateRandomToken = () => {
 
 
   if (!admin) {
-      throw new Error("admin does not exist");
-  }
+    console.log('nnnnnnnnnnn')
+    return res.status(500).json({ error: "admin does not exist" });
+    }
   const token = await Token.findOne({ userId: admin._id });
   if (token) { 
         await Token.deleteOne()
@@ -164,7 +165,6 @@ console.log(admin.mail);
     },
   });
 } catch (error) {
-  console.error("Error resetting password:", error);
   res.status(500).json({ error: "Internal server error" });
 }
 });
