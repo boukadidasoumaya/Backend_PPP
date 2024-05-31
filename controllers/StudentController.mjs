@@ -43,6 +43,7 @@ export const getStudents = asyncHandler(async (req, res) => {
       $project: {
         _id: 1,
         FirstName: 1,
+        Student_id: 1,
         LastName: 1,
         Email: 1,
         CIN: 1,
@@ -88,6 +89,7 @@ export const getStudentById = asyncHandler(async (req, res) => {
           _id: 1,
           FirstName: 1,
           LastName: 1,
+          Student_id: 1,
           Email: 1,
           CIN: 1,
           Birthday: 1,
@@ -135,6 +137,7 @@ export const getStudentsByMajor = asyncHandler(async (req, res) => {
           _id: 1,
           FirstName: 1,
           LastName: 1,
+          Student_id: 1,
           Email: 1,
           CIN: 1,
           Birthday: 1,
@@ -180,6 +183,7 @@ export const getStudentsByYear = asyncHandler(async (req, res) => {
           _id: 1,
           FirstName: 1,
           LastName: 1,
+          Student_id: 1,
           Email: 1,
           CIN: 1,
           Birthday: 1,
@@ -230,6 +234,7 @@ export const getStudentsByMajorAndByYear = asyncHandler(async (req, res) => {
           _id: 1,
           FirstName: 1,
           LastName: 1,
+          Student_id: 1,
           Email: 1,
           CIN: 1,
           Birthday: 1,
@@ -262,6 +267,10 @@ export const isCinExists = async (cin) => {
   const existingStudent = await Student.findOne({ CIN: cin });
   return !!existingStudent; // Renvoie true si le CIN existe déjà, sinon false
 };
+export const isIDExists = async (id) => {
+  const existingStudent = await Student.findOne({ Student_id: id });
+  return !!existingStudent; // Renvoie true si le ID existe déjà, sinon false
+};
 
 // Fonction pour vérifier si l'email existe déjà dans la base de données
 export const isEmailExists = async (email) => {
@@ -270,32 +279,34 @@ export const isEmailExists = async (email) => {
 };
 
 export const createStudent = asyncHandler(async (req, res) => {
-  const { Major, Year, Group, CIN, Email, ...studentData } = req.body;
+  const { Major, Year, Group,Student_id, CIN, Email, ...studentData } = req.body;
 
   try {
     const isCinDuplicate = await isCinExists(CIN);
     const isEmailDuplicate = await isEmailExists(Email);
-
-    if (isCinDuplicate && isEmailDuplicate) {
+    const isIDDuplicate = await isIDExists(Student_id);
+    
+    const errors = {};
+    
+    if (isCinDuplicate) {
+      errors.cin = "CIN already exists";
+    }
+    
+    if (isEmailDuplicate) {
+      errors.email = "Email already exists";
+    }
+    
+    if (isIDDuplicate) {
+      errors.Student_id = "ID already exists";
+    }
+    
+    // If there are any errors, return them all at once
+    if (Object.keys(errors).length > 0) {
       return res.status(400).json({
         success: false,
-        errors: { cin: "CIN already exists", email: "Email Already exists" },
+        errors: errors,
       });
     }
-    // Vérifie si le CIN existe déjà
-    if (isCinDuplicate) {
-      return res
-        .status(400)
-        .json({ success: false, errors: { cin: "CIN already exists" } });
-    }
-
-    // Vérifie si l'email existe déjà
-    if (isEmailDuplicate) {
-      return res
-        .status(400)
-        .json({ success: false, errors: { email: "Email already exists" } });
-    }
-
     // Check if the CIN already exists
 
     let classObject;
@@ -324,6 +335,7 @@ export const createStudent = asyncHandler(async (req, res) => {
       ...studentData,
       CIN,
       Email,
+      Student_id,
       class_id: classObject._id,
     });
 
@@ -347,23 +359,26 @@ export const createStudent = asyncHandler(async (req, res) => {
 export const updateStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { Major, Year, Group, ...updatedStudentData } = req.body;
-  const { CIN, Email } = updatedStudentData;
+  const { CIN, Email,Student_id } = updatedStudentData;
 
   try {
     const existingStudent = await Student.findById(id);
     const currentCIN = existingStudent.CIN;
     const currentEmail = existingStudent.Email;
+    const currentID = existingStudent.Student_id;
 
     const isCinDuplicate = await isCinExists(CIN);
     const isEmailDuplicate = await isEmailExists(Email);
+    const isIDDuplicate = await isIDExists(Student_id);
 
-    if (currentCIN !== CIN && currentEmail !== Email) {
+    if (currentCIN !== CIN && currentEmail !== Email && currentID !== Student_id) {
       if (isCinDuplicate && isEmailDuplicate) {
         return res.status(400).json({
           success: false,
           errors: {
             cin: "CIN already exists",
             email: "Email Already exists",
+            Student_id: "ID Already exists",
           },
         });
       }
@@ -380,6 +395,11 @@ export const updateStudent = asyncHandler(async (req, res) => {
           .status(400)
           .json({ success: false, errors: { email: "Email already exists" } });
       }
+      if (isIDDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { Student_id: "ID already exists" } });
+      }
     } else if (currentCIN !== CIN) {
       if (isCinDuplicate) {
         return res
@@ -393,6 +413,14 @@ export const updateStudent = asyncHandler(async (req, res) => {
           .json({ success: false, errors: { email: "Email already exists" } });
       }
     }
+    else if (currentID !== Student_id) {
+      if (isIDDuplicate) {
+        return res
+          .status(400)
+          .json({ success: false, errors: { Student_id: "ID already exists" } });
+      }
+    }
+
     // Check if the student exists
     const student = await Student.findById(id);
     if (!student) {

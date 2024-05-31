@@ -46,7 +46,7 @@ joi.extend((joi) => ({
   }));
 // Définissez le schéma de validation à l'aide de Joi
 const teacherSchema = joi.object({
-Teacher_id: joi.string().required(),
+  Teacher_id: joi.string().required(),
   FirstName: joi.string().required(),
   LastName: joi.string().required(),
   Email: joi.string().email().required(),
@@ -140,11 +140,13 @@ export const createTeachersByCSV = async (req, res) => {
               Email: teacherData.Email,
             });
             const existingCIN = await Teacher.findOne({ CIN: teacherData.CIN });
+            const existingID = await Teacher.findOne({ Teacher_id: teacherData.Teacher_id });
+
             let formatCIN = true;
             if (!/^\d{8}$/.test(teacherData.CIN)) {
               formatCIN = false;
             }
-            if (existingEmail || existingCIN || !formatCIN) {
+            if (existingEmail || existingCIN || !formatCIN || existingID) {
               // Gérez l'e-mail ou le CIN non unique
               ok = false;
               problematicLines.push(i + 1); // Ajoutez le numéro de ligne avec des problèmes au tableau

@@ -627,18 +627,30 @@ export const dropTimeTablesByMajorYearAndSemester = asyncHandler(async (req, res
     // Récupérer les IDs des classes
     const classIds = classes.map(cls => cls._id);
 
+    // Récupérer les timetable_ids avant suppression
+    const timetables = await TimeTable.find({ class_id: { $in: classIds }, Semester: semester });
+    const timetableIds = timetables.map(timetable => timetable._id);
+
     // Supprimer les timetables correspondant aux classes trouvées et au semestre donné
     const result = await TimeTable.deleteMany({ class_id: { $in: classIds }, Semester: semester });
 
+    // Supprimer les entrées dans les tables absence et attendance
+    await Absence.deleteMany({ timetable_id: { $in: timetableIds } });
+    await Attendance.deleteMany({ timetable_id: { $in: timetableIds } });
+
     res.status(200).json({
       success: true,
-      message: `${result.deletedCount} time table entries deleted successfully`,
+      message: `${result.deletedCount} time table entries deleted successfully along with associated absences and attendances`,
     });
   } catch (error) {
     console.error(error); // Log the error for debugging
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
+
+
+
+
 export {
   getTimeTables,
   getTimeTableById,
