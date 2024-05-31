@@ -12,7 +12,6 @@ import {
   getALLClasses,
   getTeacherDataWithAbsences,
   deleteTeachersByDepartment,
-  getAbsencesForClass,
 } from "../controllers/TeacherController.mjs";
 import { createTeachersByCSV } from "../middleware/ManageCSVFileTeachers.mjs";
 import multer from "multer";
@@ -34,7 +33,6 @@ router.route("/subjects/:subject").get(getTeachersBySubject);
 router.route("/class").get(getALLClasses);
 router.route('/departments/subjects/:department/:subject').get(getTeachersByDepartmentAndSubject );
 router.route('/teacherProfile/teacherDataWithAbsences/:id').get(getTeacherDataWithAbsences);
-router.route('/:teacherId/subjects/:subjectId/classes/:classId/absences').get(getAbsencesForClass);
 
 router.route('/drop/departments/:department').delete(deleteTeachersByDepartment);
 
