@@ -1,7 +1,6 @@
 import express from "express";
 import {
   getSubjects,
-  getSubjectById,
   getSubjectByName,
   getSubjectsByMajor,
   getSubjectsByYear,
@@ -15,11 +14,16 @@ import {
   createSubject,
   updateSubject,
   deleteSubject,
+  dropSubjectsByMajorAndYear,
 } from "../controllers/subjectController.mjs";
+import { importSubjectsFromCSV } from "../middleware/ManageCSVFileSubjects.mjs";
+import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ dest: "../uploads" });
 
 router.route("/").get(getSubjects).post(createSubject);
+router.route("/upload").post(upload.single("csv"), importSubjectsFromCSV);
 router.route("/modules").get(getAllModules);
 router.route("/subjects").get(getAllSubjects);
 router.route("/:id").put(updateSubject).delete(deleteSubject);
@@ -33,5 +37,6 @@ router.route("/modulemajor/:module/:major").get(getSubjectsByModuleAndMajor);
 router
   .route("/modulemajoryear/:module/:major/:year")
   .get(getSubjectsByModuleMajorAndYear);
+router.route("/drop/:major/:year").delete(dropSubjectsByMajorAndYear);
 
 export default router;

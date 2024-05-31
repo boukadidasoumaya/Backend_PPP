@@ -1,10 +1,24 @@
 import Subject from "../models/SubjectModel.mjs";
 import TimeTable from "../models/TimeTableModel.mjs";
+import Class from "../models/ClassModel.mjs";
 import Modules from "../enums/moduleEnum.mjs";
+import asyncHandler from "express-async-handler";
 import { mongoose, Types } from "mongoose";
+import multer from "multer";
+
 const { ObjectId } = mongoose.Types;
 
-import asyncHandler from "express-async-handler";
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./uploads");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.originalname + "-" + uniqueSuffix);
+  },
+});
+
+const upload = multer({ storage: storage });
 
 export const getSubjects = asyncHandler(async (req, res) => {
   try {
@@ -1184,4 +1198,69 @@ export const deleteSubject = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, data: { deletedSubject, deletedTimetables } });
+});
+
+export const dropSubjectsByMajorAndYear = asyncHandler(async (req, res) => {
+  try {
+    const { major, year } = req.params;
+
+    let classFilter = {};
+
+    // If "All Majors" is specified, ignore the major filter
+    if (major !== "All Majors") {
+      classFilter.Major = major;
+    }
+
+    // If "All Years" is specified, ignore the year filter
+    if (year !== "All Years") {
+      const yearNumber = parseInt(year);
+      // Check if the parameter 'year' is a valid number
+      if (isNaN(yearNumber)) {
+        return res.status(400).json({
+          success: false,
+          error: "The 'year' parameter must be a valid number",
+        });
+      }
+      classFilter.Year = yearNumber;
+    }
+
+    // Find all classes matching the given major and/or year
+    const classes = await Class.find(classFilter);
+
+    if (classes.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "No classes found for the given parameters",
+      });
+    }
+
+    // Extract the class IDs
+    const classIds = classes.map((cls) => cls._id);
+
+    const timetables = await TimeTable.find({class_id: {$in: classIds}})
+
+    if (timetables.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "No timetable found for the given parameters",
+      });
+    }
+
+    // Extract the subject IDs
+    const subjectIds = timetables.map((tt) => tt.subject_id);
+
+    // Delete the foreign key references in the Time_table table
+    await TimeTable.deleteMany({ class_id: { $in: classIds } });
+
+    // Delete the subjects
+    await Subject.deleteMany({ _id: { $in: subjectIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${subjectIds.length} subjects and their references in the Time_table deleted successfully`,
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ success: false, error: "Server error" });
+  }
 });
