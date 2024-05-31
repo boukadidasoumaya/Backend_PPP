@@ -1,6 +1,8 @@
 import Teacher from "../models/TeacherModel.mjs"; // Import Teacher model
 import TimeTable from "../models/TimeTableModel.mjs"; // Import TimeTable model
 import Subject from "../models/SubjectModel.mjs"; // Import Subject model
+import Absence from "../models/AbscenceModel.mjs";
+import AbsenceTeacher from "../models/AbsenceTeacherModel.mjs";
 import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
 const { ObjectId } = mongoose.Types;
@@ -318,10 +320,11 @@ export const getTeachersByDepartmentAndSubject = asyncHandler(async (req, res) =
 
 
 
-// @desc    Get teacher data with timetable and subjects
-// @route   GET /teachers/:id/data
+
+// @desc    Get teacher data with timetable, subjects, and absences
+// @route   GET /teachers/:id/dataWithAbsences
 // @access  Public
-export const getTeacherData = asyncHandler(async (req, res) => {
+export const getTeacherDataWithAbsences = asyncHandler(async (req, res) => {
   const teacherId = new ObjectId(req.params.id);
 
   try {
@@ -352,9 +355,10 @@ export const getTeacherData = asyncHandler(async (req, res) => {
       { $unwind: '$class' },
       {
         $project: {
-          _id: 0,
+          _id: 1,
           subjectId: '$subject._id',
           subjectName: '$subject.SubjectName',
+          timetableId: '$_id',
           major: '$class.Major',
           group: '$class.Group',
           year: '$class.Year'
@@ -362,23 +366,60 @@ export const getTeacherData = asyncHandler(async (req, res) => {
       }
     ]);
 
+    const absences = await AbsenceTeacher.aggregate([
+      { $match: { teacher_id: teacherId } },
+      {
+        $lookup: {
+          from: 'Time_table',
+          localField: 'timetable_id',
+          foreignField: '_id',
+          as: 'timetable'
+        }
+      },
+      { $unwind: '$timetable' },
+      {
+        $lookup: {
+          from: 'Subject',
+          localField: 'timetable.subject_id',
+          foreignField: '_id',
+          as: 'subject'
+        }
+      },
+      { $unwind: '$subject' },
+      {
+        $group: {
+          _id: '$subject._id',
+          subjectName: { $first: '$subject.SubjectName' },
+          absenceCount: { $sum: 1 }
+        }
+      }
+    ]);
+
     const subjectsMap = new Map();
 
-    timetables.forEach(({ subjectId, subjectName, major, group ,year}) => {
+    timetables.forEach(({ subjectId, subjectName, major, group ,year }) => {
       if (!subjectsMap.has(subjectId.toString())) {
         subjectsMap.set(subjectId.toString(), {
           id: subjectId,
           subjectName: subjectName,
           classes: new Set(),
+          absences: 0,
         });
       }
       subjectsMap.get(subjectId.toString()).classes.add(`${major}${year}/${group}`);
+    });
+
+    absences.forEach(({ _id, subjectName, absenceCount }) => {
+      if (subjectsMap.has(_id.toString())) {
+        subjectsMap.get(_id.toString()).absences = absenceCount;
+      }
     });
 
     const formattedSubjects = Array.from(subjectsMap.values()).map(subject => ({
       id: subject.id,
       subjectName: subject.subjectName,
       classes: Array.from(subject.classes),
+      absences: subject.absences,
     }));
 
     res.status(200).json({ success: true, data: { subjects: formattedSubjects } });
@@ -387,6 +428,9 @@ export const getTeacherData = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: 'Server Error' });
   }
 });
+
+
+
 
 
 
@@ -617,11 +661,13 @@ export const updateTeacher = asyncHandler(async (req, res) => {
     }
 
     // Update the teacher document
+    teacher._id = id;
     teacher.FirstName = FirstName;
     teacher.LastName = LastName;
     teacher.CIN = CIN;
     teacher.Email = Email;
     teacher.Department = Department;
+    //teacher.Subjects = Subjects;
 
     await teacher.save();
 
@@ -676,5 +722,46 @@ export const deleteTeachersByDepartment = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, error: "Server Error" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+export const getAbsencesForClass = asyncHandler(async (req, res) => {
+  const teacherId = new ObjectId(req.params.teacherId);
+  const subjectId = new ObjectId(req.params.subjectId);
+  const classId = new ObjectId(req.params.classId);
+
+  try {
+    const absences = await AbsenceTeacher.aggregate([
+      {
+        $match: {
+          teacher_id: teacherId,
+          timetable_id: {
+            $in: await TimeTable.find({ teacher_id: teacherId, subject_id: subjectId, class_id: classId }).distinct('_id')
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          absenceCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const absenceCount = absences.length > 0 ? absences[0].absenceCount : 0;
+
+    res.status(200).json({ success: true, data: { absenceCount } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: 'Server Error' });
   }
 });

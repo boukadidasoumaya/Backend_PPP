@@ -9,10 +9,10 @@ import {
   getTeachersByDepartment,
   getTeachersByDepartmentAndSubject,
   getAllDepartments,
-  //getTeachersByClass
   getALLClasses,
-  getTeacherData,
+  getTeacherDataWithAbsences,
   deleteTeachersByDepartment,
+  getAbsencesForClass,
 } from "../controllers/TeacherController.mjs";
 import { createTeachersByCSV } from "../middleware/ManageCSVFileTeachers.mjs";
 import multer from "multer";
@@ -33,8 +33,11 @@ router.route("/departments/:department").get(getTeachersByDepartment);
 router.route("/subjects/:subject").get(getTeachersBySubject);
 router.route("/class").get(getALLClasses);
 router.route('/departments/subjects/:department/:subject').get(getTeachersByDepartmentAndSubject );
-router.route('/TeacherProfile/teacherData/:id').get(getTeacherData);
+router.route('/teacherProfile/teacherDataWithAbsences/:id').get(getTeacherDataWithAbsences);
+router.route('/:teacherId/subjects/:subjectId/classes/:classId/absences').get(getAbsencesForClass);
+
 router.route('/drop/departments/:department').delete(deleteTeachersByDepartment);
+
 router.route('/upload').post(upload.single('csv'),createTeachersByCSV);
 
 export default router;
