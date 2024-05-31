@@ -9,8 +9,8 @@ import {
   getTeachersByDepartment,
   getTeachersByDepartmentAndSubject,
   getAllDepartments,
-  //getTeachersByClass
   getALLClasses,
+  getTeacherDataWithAbsences,
   deleteTeachersByDepartment,
 } from "../controllers/TeacherController.mjs";
 import { createTeachersByCSV } from "../middleware/ManageCSVFileTeachers.mjs";
@@ -32,7 +32,10 @@ router.route("/departments/:department").get(getTeachersByDepartment);
 router.route("/subjects/:subject").get(getTeachersBySubject);
 router.route("/class").get(getALLClasses);
 router.route('/departments/subjects/:department/:subject').get(getTeachersByDepartmentAndSubject );
+router.route('/teacherProfile/teacherDataWithAbsences/:id').get(getTeacherDataWithAbsences);
+
 router.route('/drop/departments/:department').delete(deleteTeachersByDepartment);
+
 router.route('/upload').post(upload.single('csv'),createTeachersByCSV);
 
 export default router;
