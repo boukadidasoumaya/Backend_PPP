@@ -50,7 +50,7 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
           !trimmedEntry.Module ||
           !trimmedEntry.Coeff
         ) {
-          throw new Error(
+          console.error(
             `Missing required fields in entry: ${JSON.stringify(trimmedEntry)}`
           );
         }
@@ -83,8 +83,12 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
           "Erreur lors de la création de l'entrée des matières:",
           error
         );
-        errors.push(`Erreur: ${error.message}`);
-      }
+        errors.push(`Erreur: ${error}`);
+        return res.status(500).json({
+          success: false,
+          message: "Erreur lors de la création",
+          error: error.message,
+        });}
     }
 
     // Insert the entries into the database
@@ -107,7 +111,8 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
     console.error("Erreur lors du traitement du fichier CSV:", error);
     return res.status(500).json({
       success: false,
-      error: "Erreur lors du traitement du fichier CSV",
+      message: "Erreur lors du traitement du fichier CSV",
+      error: error.message,
     });
   }
 });
