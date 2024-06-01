@@ -14,6 +14,10 @@ const SubjectSchema = mongoose.Schema({
   Coeff: {
     type: Number,
     required: [true, "Please add coefficient"],
+    enum: {
+      values: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      message: "Coefficient must be between 1 and 6",
+    },
   },
 });
 

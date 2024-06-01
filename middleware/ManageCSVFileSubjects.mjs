@@ -17,7 +17,7 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
     if (!(req.file && req.file.mimetype === "text/csv")) {
       return res
         .status(400)
-        .json({ success: false, error: "Type de fichier invalide" });
+        .json({ success: false, error: ["Type de fichier invalide"] });
     }
 
     // Read the CSV file
@@ -30,29 +30,55 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
       console.error("CSV Parsing errors:", parsedData.errors);
       return res.status(400).json({
         success: false,
-        error: "Erreur lors du parsing du fichier CSV",
+        error: ["Erreur lors du parsing du fichier CSV"],
         details: parsedData.errors,
       });
     }
 
     const subjectsEntries = [];
     const errors = [];
-    let count = 0;
+
     // Process each entry in the CSV data
     for (const entry of parsedData.data) {
       try {
         // Trim whitespace from the entry
         const trimmedEntry = trimObject(entry);
 
+        console.log("trimmedModule: ", trimmedEntry.Coeff);
+
         // Validate the presence of required fields
+        if (
+          trimmedEntry.SubjectName === undefined ||
+          trimmedEntry.Module === undefined ||
+          trimmedEntry.Coeff === undefined
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Champs requis manquants dans l'entrée",
+            error: [`Champs requis manquants dans l'entrée: ${JSON.stringify(
+              trimmedEntry
+            )}`],
+          });
+        }
         if (
           !trimmedEntry.SubjectName ||
           !trimmedEntry.Module ||
           !trimmedEntry.Coeff
         ) {
-          console.error(
+          errors.push(
             `Missing required fields in entry: ${JSON.stringify(trimmedEntry)}`
           );
+          continue;
+        }
+
+        // Validate coefficient range
+        if (trimmedEntry.Coeff < 1 || trimmedEntry.Coeff > 9) {
+          errors.push(
+            `Coefficient must be between 1 and 9 in entry: ${JSON.stringify(
+              trimmedEntry
+            )}`
+          );
+          continue; // Skip to the next entry
         }
 
         // Check for redundancy
@@ -63,10 +89,7 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
         });
 
         if (existingSubject) {
-          count++;
-          throw new Error(
-            `Duplicate entry found: ${JSON.stringify(trimmedEntry)}`
-          );
+          errors.push(`Duplicate entry found: ${JSON.stringify(trimmedEntry)}`);
         } else {
           // Create a new subject entry
           const newEntry = {
@@ -83,28 +106,25 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
           "Erreur lors de la création de l'entrée des matières:",
           error
         );
-        errors.push(`Erreur: ${error}`);
-        return res.status(500).json({
-          success: false,
-          message: "Erreur lors de la création",
-          error: error.message,
-        });}
+        errors.push(
+          `Erreur lors de la création de l'entrée des matières: ${error.message}`
+        );
+      }
     }
 
     // Insert the entries into the database
-    if (!count) {
+    if (subjectsEntries.length > 0 && errors.length === 0) {
       await Subject.insertMany(subjectsEntries);
-
       return res.status(201).json({
         success: true,
         message: "Matières importées avec succès",
-        error: errors.length > 0 ? errors : null,
+        error: ["Matières importées avec succès"],
       });
-    } else {
-      return res.status(500).json({
+    } else if (errors.length > 0) {
+      return res.status(400).json({
         success: false,
-        message: "Subject Duplicated",
-        error: errors.length > 0 ? errors : null,
+        message: "Erreurs lors de l'importation des matières",
+        error: errors,
       });
     }
   } catch (error) {
@@ -112,7 +132,7 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Erreur lors du traitement du fichier CSV",
-      error: error.message,
+      error: [error.message],
     });
   }
 });
