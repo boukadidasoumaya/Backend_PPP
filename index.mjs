@@ -23,6 +23,7 @@ app.use(
   })
 );
 
+
 app.use("/api/subjects",validationToken, subjectRouter);
 app.use("/api/admin", AdminRouter);
 app.use("/students", validationToken,StudentRouter);
@@ -32,5 +33,6 @@ app.use("/timetables",validationToken, TimeTableRouter);
 app.use("/api/attendance",validationToken, AttendanceRouter);
 
 connectDb();
-app.listen(process.env.PORT , ()=>{
-   console.log("Server is running")});
+app.listen(process.env.PORT, () => {
+  console.log("Server is running");
+});

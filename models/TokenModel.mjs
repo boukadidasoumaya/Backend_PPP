@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import Admin from './AdminModel.mjs';
 const TokenSchema = new mongoose.Schema({

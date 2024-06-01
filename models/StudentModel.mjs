@@ -3,16 +3,18 @@ import bcrypt from 'bcrypt';
 // add birthday as atribute
 
 
-function generateStudentId() {
-  return Math.floor(2100000 + Math.random() * 2100000);
-}
 
 // Define schema
 const StudentSchema = new mongoose.Schema({
   Student_id: {
-    type: Number,
+    type: String,
     unique: true,
-    default: generateStudentId // Set the default value to the generated student ID
+    validate: {
+      validator: function(v) {
+        return /^\d{7}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid Student ID! It should be exactly 7 digits.`
+    }
   },
   CIN: {
     type: String,
