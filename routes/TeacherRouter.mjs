@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  getTeachers,
+  countTeachers,getTeachers,
   getTeacherById,
   createTeacher,
   updateTeacher,
@@ -9,8 +9,8 @@ import {
   getTeachersByDepartment,
   getTeachersByDepartmentAndSubject,
   getAllDepartments,
-  //getTeachersByClass
   getALLClasses,
+  getTeacherDataWithAbsences,
   deleteTeachersByDepartment,
 } from "../controllers/TeacherController.mjs";
 import { createTeachersByCSV } from "../middleware/ManageCSVFileTeachers.mjs";
@@ -20,6 +20,7 @@ import fs from "fs";
 
 const upload = multer({ dest: '../uploads' });
 const router = express.Router();
+router.route('/count').get(countTeachers);
 
 router.route("/").get(getTeachers).post(createTeacher);
 router
@@ -32,7 +33,10 @@ router.route("/departments/:department").get(getTeachersByDepartment);
 router.route("/subjects/:subject").get(getTeachersBySubject);
 router.route("/class").get(getALLClasses);
 router.route('/departments/subjects/:department/:subject').get(getTeachersByDepartmentAndSubject );
+router.route('/teacherProfile/teacherDataWithAbsences/:id').get(getTeacherDataWithAbsences);
+
 router.route('/drop/departments/:department').delete(deleteTeachersByDepartment);
+
 router.route('/upload').post(upload.single('csv'),createTeachersByCSV);
 
 export default router;

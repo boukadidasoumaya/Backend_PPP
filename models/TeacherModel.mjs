@@ -20,7 +20,12 @@ const TeacherSchema = new mongoose.Schema({
     Teacher_id: {
         type: String,
         unique: true,
-        
+        validate: {
+            validator: function(v) {
+            return /^\d{7}$/.test(v);
+            },
+        message: props => `${props.value} is not a valid Student ID! It should be exactly 7 digits.`
+    }
       },
     CIN: {
         type: String,

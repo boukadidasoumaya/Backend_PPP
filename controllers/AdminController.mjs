@@ -202,15 +202,16 @@ export const resetPassword = expressAsyncHandler(async (req, res) => {
       return Array.from(array, (byte) => byte.toString(16)).join("");
     };
 
-    if (!admin) {
-      throw new Error("admin does not exist");
+  if (!admin) {
+    console.log('nnnnnnnnnnn')
+    return res.status(500).json({ error: "admin does not exist" });
     }
-    const token = await Token.findOne({ userId: admin._id });
-    if (token) {
-      await Token.deleteOne();
-    }
-    const existingToken = await Token.findOne({ userId: admin._id });
-    if (existingToken) {
+  const token = await Token.findOne({ userId: admin._id });
+  if (token) { 
+        await Token.deleteOne()
+  };
+  const existingToken = await Token.findOne({ userId: admin._id });
+  if (existingToken) {
       await existingToken.deleteOne();
     }
 
@@ -225,26 +226,22 @@ export const resetPassword = expressAsyncHandler(async (req, res) => {
     });
     console.log(admin.mail);
 
-    const link = `http://localhost:3000/forgot/passwordReset/verif?token=${resetToken}&id=${admin._id}`;
-    sendEmail(admin.mail, "Password Reset Request", {
+  const link = `http://localhost:3000/forgot/passwordReset/verif?token=${resetToken}&id=${admin._id}`;
+  sendEmail(admin.mail,"Password Reset Request",{name: admin.name,link: link,});
+  res.status(200).json({
+    success: true,
+    message: "Password reset token generated and email sent successfully",
+    resetToken,
+    admin: {
+      _id: admin._id,
       name: admin.name,
-      link: link,
-    });
-    res.status(200).json({
-      success: true,
-      message: "Password reset token generated and email sent successfully",
-      resetToken,
-      admin: {
-        _id: admin._id,
-        name: admin.name,
-        mail: admin.mail,
-        // Add other admin properties as needed
-      },
-    });
-  } catch (error) {
-    console.error("Error resetting password:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+      mail: admin.mail,
+      // Add other admin properties as needed
+    },
+  });
+} catch (error) {
+  res.status(500).json({ error: "Internal server error" });
+}
 });
 export const updateAdmin = expressAsyncHandler(async (req, res) => {
   try {

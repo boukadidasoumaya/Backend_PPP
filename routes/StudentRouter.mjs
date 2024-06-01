@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStudents, getStudentById,getStudentsByMajor, createStudent, updateStudent, deleteStudent, getStudentsByYear, getStudentsByMajorAndByYear,dropStudentsByMajorAndYear,getStudentAbsences,getStudentAbsencesBySemester} from '../controllers/StudentController.mjs';
+import { getStudents, getStudentById,getStudentsByMajor, createStudent, updateStudent, deleteStudent, getStudentsByYear, getStudentsByMajorAndByYear,countStudents,dropStudentsByMajorAndYear,getStudentAbsences,getStudentAbsencesBySemester} from '../controllers/StudentController.mjs';
 import { createStudentsByCSV } from '../middleware/ManageCSVFile.mjs';
 const router = express.Router();
 import multer from "multer";
@@ -7,6 +7,7 @@ import csv from "csv-parser";
 import fs from "fs";
 
 const upload = multer({ dest: '../uploads' });
+router.route('/count').get(countStudents);
 
 router.route('/').get(getStudents).post(createStudent);
 router.route('/:id').get(getStudentById).put(updateStudent).delete(deleteStudent);

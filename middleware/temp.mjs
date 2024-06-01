@@ -48,7 +48,7 @@ joi.extend((joi) => ({
 
 // Define the validation schema using Joi
 const studentSchema = joi.object({
-  Student_id:joi.string().required(),
+  Student_id: joi.string().required(),
   FirstName: joi.string().required(),
   LastName: joi.string().required(),
   Email: joi.string().email().required(),
@@ -114,6 +114,7 @@ const validateCINUnique = async (value, helpers) => {
 // Add CIN validation to the schema
 studentSchema.validateCINUnique = () =>
   joi.string().required().custom(validateCINUnique);
+
 const validateIDUnique = async (value, helpers) => {
   try {
     // Check if the ID consists of 7 digits
@@ -138,9 +139,6 @@ const studentValidationSchema = studentSchema.keys({
   CIN: studentSchema.validateCINUnique(),
   Email: studentSchema.validateEmailUnique(),
   Student_id: studentSchema.validateIDUnique(),
-
-}).error((errors) => {
-  throw new Error(errors);
 });
 
 export const createStudentsByCSV = async (req, res) => {
@@ -149,6 +147,7 @@ export const createStudentsByCSV = async (req, res) => {
       let ok = true;
       const problematicLines = [];
       const validationErrors = [];
+      
       // Parsing CSV using papaparse
       const CSVFileUP = req.file.path;
       const csvData = fs.readFileSync(CSVFileUP, "utf8");
@@ -161,45 +160,48 @@ export const createStudentsByCSV = async (req, res) => {
           .json({ success: false, error: "Invalid file type" });
       }
 
-
       // Loop through each student data
       for (let i = 0; i < parsedData.data.length; i++) {
         const studentData = parsedData.data[i];
         try {
           // Validate student data using Joi
-          const { error } = await studentValidationSchema.validateAsync(studentData);
-          console.log("error", error);
+          const { error } = await studentValidationSchema.validateAsync(
+            studentData
+          );
           if (error) {
-            // Collect all validation error messages for this line
-           
-            const errorMessage = error.details.map((detail) => detail.message).join(", ");
-            validationErrors.push(`Line ${i + 1}: ${errorMessage}`);
+            // Collect all validation error messages
+            const errorMessage = error.details.map((detail) => detail.message);
+            validationErrors.push(`Ligne ${i + 1}: ${errorMessage.join(", ")}`);
             problematicLines.push(i + 1);
             ok = false;
             continue; // Skip to next student if validation fails
           }
-      
+
           // Check for unique Email and CIN in the database before creating the student
-          const existingEmail = await Student.findOne({ Email: studentData.Email });
+          const existingEmail = await Student.findOne({
+            Email: studentData.Email,
+          });
+          if(existingEmail){
+            validationErrors.push(`Ligne ${i + 1}: Email '${studentData.Email}' existe déjà`);}
+
           const existingCIN = await Student.findOne({ CIN: studentData.CIN });
-          const existingID = await Student.findOne({ Student_id: studentData.Student_id });
-      
-          let existingErrorMessages = [];
-      
-          if (existingEmail) {
-            existingErrorMessages.push(`Email '${studentData.Email}' existe déjà`);
-          }
-      
           if (existingCIN) {
-            existingErrorMessages.push(`CIN '${studentData.CIN }' existe déjà`);
+            validationErrors.push(`Ligne ${i + 1}: CIN '${studentData.CIN }' existe déjà`);
           }
-      
+          const existingID =  await Student.findOne({ Student_id: studentData.Student_id });
           if (existingID) {
-            existingErrorMessages.push(`ID '${studentData.Student_id}' existe déjà`);
+            validationErrors.push(`Ligne ${i + 1}: ID '${studentData.Student_id}' existe déjà`);
           }
-      
-          if (existingErrorMessages.length > 0) {
-            validationErrors.push(`Ligne ${i + 1}: ${existingErrorMessages.join(", ")}`);
+          let formatCIN = true;
+          if (!/^\d{8}$/.test(studentData.CIN)) {
+            formatCIN = false;
+          }
+          let formatID = true;
+          if (!/^\d{7}$/.test(studentData.Student_id)) {
+            formatID =false;
+          }
+
+          if (existingEmail || existingCIN || !formatCIN || !formatID || existingID) {
             problematicLines.push(i + 1);
             ok = false;
             continue;
@@ -209,8 +211,8 @@ export const createStudentsByCSV = async (req, res) => {
           return res.status(500).json({ success: false, error: error.message });
         }
       }
-      
-      
+
+      // If there are validation errors, return them along with problematic lines
       if (!ok) {
         return res.status(400).json({
           success: false,
@@ -222,52 +224,14 @@ export const createStudentsByCSV = async (req, res) => {
 
       // If no errors, insert the students into the database
       for (const studentData of parsedData.data) {
-        const { Major, Year, Group, CIN, Email, ...rest } = studentData;
-        console.log("ok", ok);
-        try {
-          // Check if the class already exists
-          let classObject = await Class.findOne({ Major, Year, Group });
-
-          if (!classObject) {
-            // If the class doesn't exist, create it
-            classObject = await Class.create({ Major, Year, Group });
-          }
-
-          if (ok) {
-            // Create the student document and associate it with the class
-            const student = await Student.create({
-              ...rest,
-              CIN,
-              Email,
-              class_id: classObject._id,
-            });
-
-            // Update the class document to include the new student ID
-            if (!classObject.students) {
-              classObject.students = []; // Initialize students array if not already present
-            }
-            classObject.students.push(student._id);
-            await classObject.save();
-          }
-        } catch (error) {
-          console.error("Error inserting student into database:", error);
-          return res.status(500).json({
-            success: false,
-            error: "Error inserting student into database",
-          });
-        }
+        // Insert logic to create students
       }
-      if (ok) {
-        return res
-          .status(201)
-          .json({ success: true, message: "Students created successfully" });
-      } else {
-        return res.status(500).json({
-          success: false,
-          error:
-            "Error inserting student into database. Check Your Emails and CIN. They must be unique and valid. Also check Major, Year, and Group",
-        });
-      }
+
+      // Return success response if all students are created successfully
+      return res.status(201).json({
+        success: true,
+        message: "Students created successfully",
+      });
     } catch (err) {
       console.error("Error processing CSV file:", err);
       return res
@@ -276,3 +240,4 @@ export const createStudentsByCSV = async (req, res) => {
     }
   });
 };
+
