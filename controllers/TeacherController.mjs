@@ -1,8 +1,6 @@
 import Teacher from "../models/TeacherModel.mjs"; // Import Teacher model
 import TimeTable from "../models/TimeTableModel.mjs"; // Import TimeTable model
 import Subject from "../models/SubjectModel.mjs"; // Import Subject model
-import Absence from "../models/AbscenceModel.mjs";
-import AbsenceTeacher from "../models/AbsenceTeacherModel.mjs";
 import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
 const { ObjectId } = mongoose.Types;
@@ -340,155 +338,6 @@ export const getTeachersByDepartmentAndSubject = asyncHandler(async (req, res) =
 
 
 
-// @desc    Get teacher data with timetable, subjects, and absences
-// @route   GET /teachers/:id/dataWithAbsences
-// @access  Public
-export const getTeacherDataWithAbsences = asyncHandler(async (req, res) => {
-  const teacherId = new ObjectId(req.params.id);
-
-  try {
-    const teacher = await Teacher.findById(teacherId);
-    if (!teacher) {
-      return res.status(404).json({ success: false, message: 'Teacher not found' });
-    }
-
-    console.log('Teacher found:', teacher);
-
-    const timetables = await TimeTable.aggregate([
-      { $match: { teacher_id: teacherId } },
-      {
-        $lookup: {
-          from: 'Subject',
-          localField: 'subject_id',
-          foreignField: '_id',
-          as: 'subject'
-        }
-      },
-      { $unwind: '$subject' },
-      {
-        $lookup: {
-          from: 'Class',
-          localField: 'class_id',
-          foreignField: '_id',
-          as: 'class'
-        }
-      },
-      { $unwind: '$class' },
-      {
-        $project: {
-          _id: 1,
-          subjectId: '$subject._id',
-          subjectName: '$subject.SubjectName',
-          timetableId: '$_id',
-          classId: '$class._id',
-          className: {
-            $concat: [
-              { $toString: '$class.Major' },
-              { $toString: '$class.Year' },
-              '/',
-              { $toString: '$class.Group' }
-            ]
-          }
-        }
-      }
-    ]);
-
-    console.log('Timetables:', timetables);
-
-    const absences = await AbsenceTeacher.aggregate([
-      { $match: { teacher_id: teacherId } },
-      {
-        $lookup: {
-          from: 'Time_table',
-          localField: 'timetable_id',
-          foreignField: '_id',
-          as: 'timetable'
-        }
-      },
-      { $unwind: '$timetable' },
-      {
-        $lookup: {
-          from: 'Class',
-          localField: 'timetable.class_id',
-          foreignField: '_id',
-          as: 'class'
-        }
-      },
-      { $unwind: '$class' },
-      {
-        $group: {
-          _id: '$class._id',
-          className: {
-            $first: {
-              $concat: [
-                { $toString: '$class.Major' },
-                { $toString: '$class.Year' },
-                '/',
-                { $toString: '$class.Group' }
-              ]
-            }
-          },
-          subjectId: { $first: '$timetable.subject_id' },
-          absenceCount: { $sum: 1 }
-        }
-      }
-    ]);
-
-    console.log('Absences:', absences);
-
-    const subjectsMap = new Map();
-
-    timetables.forEach(({ subjectId, subjectName, classId, className }) => {
-      if (!subjectsMap.has(subjectId.toString())) {
-        subjectsMap.set(subjectId.toString(), {
-          id: subjectId,
-          subjectName: subjectName,
-          classes: [],
-          totalAbsences: 0,
-        });
-      }
-      const subject = subjectsMap.get(subjectId.toString());
-      subject.classes.push({ id: classId, className: className, absences: 0 });
-    });
-
-    console.log('Subjects map after timetables:', subjectsMap);
-
-    absences.forEach(({ _id, className, subjectId, absenceCount }) => {
-      const subject = subjectsMap.get(subjectId.toString());
-      if (subject) {
-        const cls = subject.classes.find(c => c.id.toString() === _id.toString());
-        if (cls) {
-          cls.absences = absenceCount;
-          subject.totalAbsences += absenceCount;
-        }
-      }
-    });
-
-    console.log('Subjects map after absences:', subjectsMap);
-
-    const formattedSubjects = Array.from(subjectsMap.values()).map(subject => ({
-      id: subject.id,
-      subjectName: subject.subjectName,
-      classes: subject.classes,
-      totalAbsences: subject.totalAbsences,
-    }));
-
-    console.log('Formatted subjects:', formattedSubjects);
-
-    res.status(200).json({ success: true, data: { subjects: formattedSubjects } });
-  } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-});
-
-
-
-
-
-
-
-
 export const getALLClasses = asyncHandler(async (req, res) => {
   try {
     const classes = await Class.aggregate([
@@ -742,13 +591,11 @@ export const updateTeacher = asyncHandler(async (req, res) => {
 
     // Update the teacher document
     teacher.Teacher_id = Teacher_id;
-
     teacher.FirstName = FirstName;
     teacher.LastName = LastName;
     teacher.CIN = CIN;
     teacher.Email = Email;
     teacher.Department = Department;
-    //teacher.Subjects = Subjects;
 
     await teacher.save();
 
@@ -805,19 +652,3 @@ export const deleteTeachersByDepartment = asyncHandler(async (req, res) => {
     res.status(500).json({ success: false, error: "Server Error" });
   }
 });
-export const countTeachers = asyncHandler(async (req, res) => {
-  try {
-    const count = await Teacher.countDocuments({});
-    console.log(count);
-    res.json({ totalProfessors: count });
-} catch (error) {
-    res.status(500).json({ error: 'An error occurred while counting the documents' });
-}
-});
-
-
-
-
-
-
-
