@@ -13,7 +13,7 @@ const TimeTableSchema = mongoose.Schema({
   Day: {
     type: String,
     required: [true, "Day is required"],
-    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday","Sunday"],
   },
   subject_id: {
     type: mongoose.Schema.Types.ObjectId,

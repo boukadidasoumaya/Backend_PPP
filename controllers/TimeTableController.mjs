@@ -2,6 +2,8 @@ import TimeTable from "../models/TimeTableModel.mjs";
 import Class from "../models/ClassModel.mjs";
 import Subject from "../models/SubjectModel.mjs";
 import Teacher from "../models/TeacherModel.mjs";
+import Absence from "../models/AbscenceModel.mjs";
+import Attendance from "../models/AttendanceModel.mjs";
 import mongoose from "mongoose";
 const { ObjectId } = mongoose.Types;
 
