@@ -1237,7 +1237,7 @@ export const dropSubjectsByMajorAndYear = asyncHandler(async (req, res) => {
     // Extract the class IDs
     const classIds = classes.map((cls) => cls._id);
 
-    const timetables = await TimeTable.find({class_id: {$in: classIds}})
+    const timetables = await TimeTable.find({ class_id: { $in: classIds } });
 
     if (timetables.length === 0) {
       return res.status(404).json({

@@ -55,9 +55,11 @@ export const importSubjectsFromCSV = expressAsyncHandler(async (req, res) => {
           return res.status(400).json({
             success: false,
             message: "Champs requis manquants dans l'entrée",
-            error: [`Champs requis manquants dans l'entrée: ${JSON.stringify(
-              trimmedEntry
-            )}`],
+            error: [
+              `Champs requis manquants dans l'entrée: ${JSON.stringify(
+                trimmedEntry
+              )}`,
+            ],
           });
         }
         if (
