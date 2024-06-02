@@ -1112,6 +1112,8 @@ export const getSubjectsByModuleMajorAndYear = asyncHandler(
 
 export const getAllModules = asyncHandler(async (req, res) => {
   try {
+    console.log("eeeeeeeeeeeeeeeeeeeeee")
+    console.log(Object.values(Modules))
     res.status(200).json({ success: true, data: Object.values(Modules) });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

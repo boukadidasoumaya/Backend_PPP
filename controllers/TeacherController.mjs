@@ -815,7 +815,19 @@ export const countTeachers = asyncHandler(async (req, res) => {
 }
 });
 
+export const calculateAndSendNumberOfTeachers = async (req, res) => {
+  try {
+    // Use Mongoose countDocuments() method to count the number of documents in the collection
+    const numberOfTeachers = await AbsenceTeacher.countDocuments().exec();
 
+    // Send the number of teachers as JSON response
+    res.json({ totalabsProfessors: numberOfTeachers });
+  } catch (error) {
+    console.error("Error calculating number of teachers:", error);
+    // Send an error response if there's an error
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 
 

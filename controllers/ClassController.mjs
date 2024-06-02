@@ -20,6 +20,7 @@ export const getAllMajors = asyncHandler(async (req, res) => {
 // Méthode pour obtenir tous les niveaux distincts
 export const getAllLevels = asyncHandler(async (req, res) => {
   const distinctLevels = await Class.distinct('Year');
+  console.log(distinctLevels);
   res.status(200).json({ levels: distinctLevels });
 });
 

@@ -359,10 +359,14 @@ export const createStudent = asyncHandler(async (req, res) => {
 export const updateStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { Major, Year, Group, ...updatedStudentData } = req.body;
-  const { CIN, Email,Student_id } = updatedStudentData;
+  const { CIN, Email, Student_id } = updatedStudentData;
 
   try {
     const existingStudent = await Student.findById(id);
+    if (!existingStudent) {
+      return res.status(404).json({ success: false, error: "Student not found" });
+    }
+
     const currentCIN = existingStudent.CIN;
     const currentEmail = existingStudent.Email;
     const currentID = existingStudent.Student_id;
@@ -371,90 +375,35 @@ export const updateStudent = asyncHandler(async (req, res) => {
     const isEmailDuplicate = await isEmailExists(Email);
     const isIDDuplicate = await isIDExists(Student_id);
 
-    if (currentCIN !== CIN && currentEmail !== Email && currentID !== Student_id) {
-      if (isCinDuplicate && isEmailDuplicate) {
-        return res.status(400).json({
-          success: false,
-          errors: {
-            cin: "CIN already exists",
-            email: "Email Already exists",
-            Student_id: "ID Already exists",
-          },
-        });
-      }
-      // Vérifie si le CIN existe déjà
-      if (isCinDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { cin: "CIN already exists" } });
-      }
-
-      // Vérifie si l'email existe déjà
-      if (isEmailDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { email: "Email already exists" } });
-      }
-      if (isIDDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { Student_id: "ID already exists" } });
-      }
-    } else if (currentCIN !== CIN) {
-      if (isCinDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { cin: "CIN already exists" } });
-      }
-    } else if (currentEmail !== Email) {
-      if (isEmailDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { email: "Email already exists" } });
-      }
-    }
-    else if (currentID !== Student_id) {
-      if (isIDDuplicate) {
-        return res
-          .status(400)
-          .json({ success: false, errors: { Student_id: "ID already exists" } });
-      }
+    if (currentCIN !== CIN && isCinDuplicate) {
+      return res.status(400).json({ success: false, errors: { cin: "CIN already exists" } });
     }
 
-    // Check if the student exists
-    const student = await Student.findById(id);
-    if (!student) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Student not found" });
+    if (currentEmail !== Email && isEmailDuplicate) {
+      return res.status(400).json({ success: false, errors: { email: "Email already exists" } });
     }
 
-    // Update the student document
-    Object.assign(student, updatedStudentData);
+    if (currentID !== Student_id && isIDDuplicate) {
+      return res.status(400).json({ success: false, errors: { Student_id: "ID already exists" } });
+    }
 
-    // Update class_id if Major, Year, or Group has changed
-    if (
-      Major !== student.Major ||
-      Year !== student.Year ||
-      Group !== student.Group
-    ) {
-      // Check if the class already exists
+    Object.assign(existingStudent, updatedStudentData);
+
+    if (Major !== existingStudent.Major || Year !== existingStudent.Year || Group !== existingStudent.Group) {
       let classObject = await Class.findOne({ Major, Year, Group });
 
       if (!classObject) {
-        // If the class doesn't exist, create it
         classObject = await Class.create({ Major, Year, Group });
       }
 
-      // Update the student's class_id
-      student.class_id = classObject._id;
+      existingStudent.class_id = classObject._id;
     }
 
-    await student.save();
+    await existingStudent.save();
 
-    res.status(200).json({ success: true, data: student });
+    res.status(200).json({ success: true, data: existingStudent });
   } catch (error) {
-    console.error(error); // Log the error for debugging
+    console.error(error);
     res.status(400).json({ success: false, error: error.message });
   }
 });

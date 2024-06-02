@@ -12,6 +12,7 @@ import {
   getALLClasses,
   getTeacherDataWithAbsences,
   deleteTeachersByDepartment,
+  calculateAndSendNumberOfTeachers
 } from "../controllers/TeacherController.mjs";
 import { createTeachersByCSV } from "../middleware/ManageCSVFileTeachers.mjs";
 import multer from "multer";
@@ -21,6 +22,7 @@ import fs from "fs";
 const upload = multer({ dest: '../uploads' });
 const router = express.Router();
 router.route('/count').get(countTeachers);
+router.route('/calculateAndSendNumberOfTeachers').get(calculateAndSendNumberOfTeachers);
 
 router.route("/").get(getTeachers).post(createTeacher);
 router
